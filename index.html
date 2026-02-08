@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>605 Bus Tracker - Udim</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      padding: 20px 0;
+    }
+
+    .bus-badge {
+      display: inline-block;
+      background: #2563eb;
+      color: white;
+      font-size: 2rem;
+      font-weight: 800;
+      padding: 8px 24px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+    }
+
+    .direction {
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    .direction .arrow {
+      display: inline-block;
+      font-size: 1.1rem;
+    }
+
+    .search-section {
+      margin: 16px 0;
+    }
+
+    .search-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .search-row input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid #334155;
+      border-radius: 10px;
+      background: #1e293b;
+      color: #e2e8f0;
+      font-size: 1rem;
+      outline: none;
+      direction: rtl;
+    }
+
+    .search-row input:focus {
+      border-color: #2563eb;
+    }
+
+    .search-row button {
+      padding: 12px 20px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .search-row button:hover { background: #1d4ed8; }
+
+    .stops-list {
+      margin-top: 8px;
+      background: #1e293b;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .stop-option {
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid #334155;
+      transition: background 0.15s;
+    }
+
+    .stop-option:last-child { border-bottom: none; }
+    .stop-option:hover { background: #334155; }
+
+    .stop-option.selected {
+      background: #1e3a5f;
+      border-right: 3px solid #2563eb;
+    }
+
+    .stop-name { font-weight: 600; }
+
+    .stop-code {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-left: 6px;
+    }
+
+    .status-dot.live { background: #22c55e; animation: pulse 2s infinite; }
+    .status-dot.error { background: #ef4444; }
+    .status-dot.loading { background: #eab308; animation: pulse 1s infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .arrivals {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .arrival-card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid #334155;
+    }
+
+    .arrival-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .line-number {
+      background: #2563eb;
+      color: white;
+      font-weight: 800;
+      font-size: 1.2rem;
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+    }
+
+    .arrival-destination {
+      font-size: 0.85rem;
+      color: #94a3b8;
+    }
+
+    .arrival-right {
+      text-align: left;
+    }
+
+    .arrival-minutes {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #22c55e;
+      line-height: 1;
+    }
+
+    .arrival-minutes.soon {
+      color: #eab308;
+    }
+
+    .arrival-minutes.now {
+      color: #ef4444;
+      font-size: 1.3rem;
+    }
+
+    .arrival-label {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    .arrival-time {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #64748b;
+    }
+
+    .empty-state .icon {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+    }
+
+    .other-lines {
+      margin-top: 24px;
+    }
+
+    .other-lines h3 {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .other-card {
+      background: #1e293b;
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid #273548;
+      margin-bottom: 6px;
+    }
+
+    .other-card .line-number {
+      background: #475569;
+      width: 40px;
+      height: 40px;
+      font-size: 0.95rem;
+    }
+
+    .other-card .arrival-minutes {
+      font-size: 1.2rem;
+      color: #94a3b8;
+    }
+
+    .tip {
+      text-align: center;
+      margin-top: 24px;
+      padding: 12px;
+      background: #1e293b;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="bus-badge">605</div>
+      <div class="direction">
+        <span class="arrow">&#x2193;</span> דרום &mdash; עודים
+      </div>
+    </header>
+
+    <div class="search-section">
+      <div class="search-row">
+        <input type="text" id="searchInput" placeholder="חפש תחנה (שם או מספר)..." value="עודים">
+        <button onclick="searchStops()">חפש</button>
+      </div>
+      <div id="stopsList" class="stops-list" style="display:none"></div>
+    </div>
+
+    <div class="status-bar">
+      <span id="statusText">טוען...</span>
+      <span id="lastUpdate"></span>
+    </div>
+
+    <div id="arrivals" class="arrivals">
+      <div class="empty-state">
+        <div class="icon">&#128652;</div>
+        <div>מחפש תחנות...</div>
+      </div>
+    </div>
+
+    <div id="otherLines" class="other-lines" style="display:none">
+      <h3>קווים נוספים בתחנה</h3>
+      <div id="otherLinesContent"></div>
+    </div>
+
+    <div class="tip">
+      מתעדכן אוטומטית כל 30 שניות
+    </div>
+  </div>
+
+  <script>
+    let selectedStopId = null;
+    let selectedStopName = null;
+    let refreshInterval = null;
+
+    async function searchStops() {
+      const query = document.getElementById('searchInput').value.trim();
+      if (!query) return;
+
+      const listEl = document.getElementById('stopsList');
+      listEl.style.display = 'block';
+      listEl.innerHTML = '<div class="stop-option">מחפש...</div>';
+
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const stops = await res.json();
+
+        if (!stops || stops.length === 0) {
+          listEl.innerHTML = '<div class="stop-option">לא נמצאו תחנות</div>';
+          return;
+        }
+
+        listEl.innerHTML = stops.map(stop => `
+          <div class="stop-option" onclick="selectStop('${stop.stop_id}', '${escapeHtml(stop.stop_name)}', this)">
+            <div class="stop-name">${escapeHtml(stop.stop_name)}</div>
+            <div class="stop-code">קוד תחנה: ${stop.stop_code || stop.stop_id}</div>
+          </div>
+        `).join('');
+      } catch (err) {
+        listEl.innerHTML = '<div class="stop-option">שגיאה בחיפוש</div>';
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]));
+    }
+
+    function selectStop(stopId, stopName, el) {
+      selectedStopId = stopId;
+      selectedStopName = stopName;
+
+      document.querySelectorAll('.stop-option').forEach(e => e.classList.remove('selected'));
+      if (el) el.classList.add('selected');
+
+      // Collapse the list after selection
+      setTimeout(() => {
+        document.getElementById('stopsList').style.display = 'none';
+      }, 300);
+
+      loadArrivals();
+
+      if (refreshInterval) clearInterval(refreshInterval);
+      refreshInterval = setInterval(loadArrivals, 30000);
+    }
+
+    async function loadArrivals() {
+      if (!selectedStopId) return;
+
+      setStatus('loading', 'מעדכן...');
+
+      try {
+        const res = await fetch(`/api/times?stop_id=${selectedStopId}`);
+        const data = await res.json();
+
+        if (!data || data.error) {
+          setStatus('error', 'שגיאה בטעינת נתונים');
+          return;
+        }
+
+        const now = Math.floor(Date.now() / 1000);
+        const allBuses = [];
+
+        for (const entry of data) {
+          if (!entry.times || entry.times.length === 0) continue;
+          for (const t of entry.times) {
+            const arrivalTimestamp = t.serviceDay + (t.realtimeArrival || t.scheduledArrival);
+            const diffSeconds = arrivalTimestamp - now;
+            if (diffSeconds < -60) continue; // skip buses that already left
+
+            allBuses.push({
+              line: t.routeShortName || '?',
+              destination: t.tripHeadsign || '',
+              minutes: Math.max(0, Math.round(diffSeconds / 60)),
+              arrivalTimestamp,
+              realtime: t.realtime || false,
+            });
+          }
+        }
+
+        allBuses.sort((a, b) => a.arrivalTimestamp - b.arrivalTimestamp);
+
+        const buses605 = allBuses.filter(b => b.line === '605');
+        const otherBuses = allBuses.filter(b => b.line !== '605');
+
+        renderArrivals(buses605);
+        renderOtherLines(otherBuses);
+
+        const timeStr = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setStatus('live', `עדכון אחרון: ${timeStr}`);
+      } catch (err) {
+        setStatus('error', 'שגיאת חיבור');
+      }
+    }
+
+    function renderArrivals(buses) {
+      const container = document.getElementById('arrivals');
+
+      if (buses.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">&#128652;</div>
+            <div>אין אוטובוסים של קו 605 בקרוב</div>
+            <div style="margin-top:8px;font-size:0.8rem">בדוק שבחרת את התחנה הנכונה (כיוון דרום)</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = buses.map(bus => {
+        const timeStr = new Date(bus.arrivalTimestamp * 1000).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+        let minutesClass = '';
+        let minutesText = `${bus.minutes}`;
+        let label = 'דקות';
+
+        if (bus.minutes <= 1) {
+          minutesClass = 'now';
+          minutesText = 'עכשיו';
+          label = '';
+        } else if (bus.minutes <= 5) {
+          minutesClass = 'soon';
+        }
+
+        return `
+          <div class="arrival-card">
+            <div class="arrival-left">
+              <div class="line-number">605</div>
+              <div>
+                <div class="arrival-destination">${escapeHtml(bus.destination)}</div>
+                <div style="font-size:0.75rem;color:#475569;margin-top:2px">
+                  ${bus.realtime ? '&#x1F4E1; זמן אמת' : '&#x1F4C5; לפי לוח זמנים'}
+                </div>
+              </div>
+            </div>
+            <div class="arrival-right">
+              <div class="arrival-minutes ${minutesClass}">${minutesText}</div>
+              <div class="arrival-label">${label}</div>
+              <div class="arrival-time">${timeStr}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderOtherLines(buses) {
+      const section = document.getElementById('otherLines');
+      const container = document.getElementById('otherLinesContent');
+
+      if (buses.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+
+      // Deduplicate: show only next arrival per line
+      const seen = new Set();
+      const unique = buses.filter(b => {
+        if (seen.has(b.line)) return false;
+        seen.add(b.line);
+        return true;
+      }).slice(0, 8);
+
+      section.style.display = 'block';
+      container.innerHTML = unique.map(bus => {
+        const timeStr = new Date(bus.arrivalTimestamp * 1000).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+        return `
+          <div class="other-card">
+            <div class="arrival-left">
+              <div class="line-number">${escapeHtml(bus.line)}</div>
+              <div class="arrival-destination" style="margin-right:8px">${escapeHtml(bus.destination)}</div>
+            </div>
+            <div class="arrival-right">
+              <div class="arrival-minutes">${bus.minutes <= 1 ? 'עכשיו' : bus.minutes}</div>
+              <div class="arrival-label">${bus.minutes > 1 ? 'דקות' : ''}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setStatus(type, text) {
+      const statusEl = document.getElementById('statusText');
+      statusEl.innerHTML = `<span class="status-dot ${type}"></span> ${text}`;
+    }
+
+    // Auto-search on load
+    window.addEventListener('DOMContentLoaded', () => {
+      searchStops();
+
+      // Enter key to search
+      document.getElementById('searchInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter') searchStops();
+      });
+    });
+  </script>
+</body>
+</html>

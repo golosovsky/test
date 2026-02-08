@@ -1,0 +1,9 @@
+{
+  "name": "bus-605-tracker",
+  "version": "1.0.0",
+  "description": "Track 605 bus arrival times at Udim station (southbound)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
