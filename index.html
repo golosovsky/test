@@ -313,6 +313,21 @@
     let selectedStopName = null;
     let refreshInterval = null;
 
+    const SEARCH_URL = 'https://app.busnearby.co.il/stopSearch';
+    const TIMES_URL = 'https://api.busnearby.co.il/directions/index/stops';
+
+    async function apiFetch(url) {
+      // Try direct fetch first, fall back to CORS proxy
+      try {
+        const res = await fetch(url);
+        if (res.ok) return await res.json();
+      } catch (e) {}
+      // Fallback: CORS proxy
+      const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+      const res = await fetch(proxyUrl);
+      return await res.json();
+    }
+
     async function searchStops() {
       const query = document.getElementById('searchInput').value.trim();
       if (!query) return;
@@ -322,8 +337,7 @@
       listEl.innerHTML = '<div class="stop-option">מחפש...</div>';
 
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-        const stops = await res.json();
+        const stops = await apiFetch(`${SEARCH_URL}?query=${encodeURIComponent(query)}&locale=he`);
 
         if (!stops || stops.length === 0) {
           listEl.innerHTML = '<div class="stop-option">לא נמצאו תחנות</div>';
@@ -370,15 +384,14 @@
       setStatus('loading', 'מעדכן...');
 
       try {
-        const res = await fetch(`/api/times?stop_id=${selectedStopId}`);
-        const data = await res.json();
+        const now = Math.floor(Date.now() / 1000);
+        const data = await apiFetch(`${TIMES_URL}/1:${selectedStopId}/stoptimes?numberOfDepartures=3&timeRange=7200&startTime=${now}&locale=he`);
 
         if (!data || data.error) {
           setStatus('error', 'שגיאה בטעינת נתונים');
           return;
         }
 
-        const now = Math.floor(Date.now() / 1000);
         const allBuses = [];
 
         for (const entry of data) {
