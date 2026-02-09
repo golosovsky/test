@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IMDb NL Search</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --surface2: #1a1a24;
+      --border: #2a2a3a;
+      --text: #e4e4ed;
+      --text-dim: #8888a0;
+      --accent: #f5c518;
+      --accent-dim: #c49e10;
+      --accent-glow: rgba(245, 197, 24, 0.15);
+      --green: #4ade80;
+      --red: #f87171;
+      --blue: #60a5fa;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Hero / Search Section ---- */
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 20px 40px;
+      transition: padding 0.4s ease;
+    }
+
+    .hero.collapsed {
+      padding: 20px 20px 16px;
+    }
+
+    .logo {
+      font-size: 2.8rem;
+      font-weight: 900;
+      letter-spacing: -1px;
+      margin-bottom: 8px;
+      transition: font-size 0.4s ease, margin 0.4s ease;
+    }
+
+    .hero.collapsed .logo {
+      font-size: 1.5rem;
+      margin-bottom: 4px;
+    }
+
+    .logo .imdb { color: var(--accent); }
+    .logo .nl { color: var(--text-dim); font-weight: 400; }
+
+    .tagline {
+      color: var(--text-dim);
+      font-size: 1.05rem;
+      margin-bottom: 32px;
+      transition: all 0.4s ease;
+    }
+
+    .hero.collapsed .tagline {
+      font-size: 0;
+      margin: 0;
+      opacity: 0;
+      height: 0;
+      overflow: hidden;
+    }
+
+    .search-box {
+      width: 100%;
+      max-width: 680px;
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 16px 56px 16px 24px;
+      font-size: 1.1rem;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-glow);
+    }
+
+    .search-input::placeholder {
+      color: var(--text-dim);
+    }
+
+    .search-btn {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 40px;
+      height: 40px;
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .search-btn:hover { background: var(--accent-dim); }
+
+    .search-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: #000;
+    }
+
+    .search-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ---- Examples ---- */
+    .examples {
+      max-width: 680px;
+      width: 100%;
+      margin: 24px auto 0;
+      padding: 0 20px;
+    }
+
+    .examples-label {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    .examples-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .example-chip {
+      padding: 8px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .example-chip:hover {
+      border-color: var(--accent);
+      color: var(--text);
+      background: var(--surface2);
+    }
+
+    /* ---- Results ---- */
+    .results-section {
+      max-width: 960px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 0 20px 40px;
+      flex: 1;
+    }
+
+    .results-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .results-count {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+    }
+
+    .sql-toggle {
+      font-size: 0.8rem;
+      color: var(--blue);
+      cursor: pointer;
+      background: none;
+      border: none;
+      text-decoration: underline;
+    }
+
+    .sql-block {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.82rem;
+      color: var(--accent);
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.6;
+    }
+
+    .sql-block.visible { display: block; }
+
+    .results-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: border-color 0.2s;
+    }
+
+    .result-card:hover {
+      border-color: var(--accent-dim);
+    }
+
+    .result-title-row {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .result-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .result-year {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+    }
+
+    .result-rating {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.9rem;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .result-rating .star {
+      font-size: 1rem;
+    }
+
+    .result-votes {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      font-weight: 400;
+    }
+
+    .result-details {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .result-tag {
+      display: inline-block;
+      padding: 3px 10px;
+      background: var(--surface2);
+      border-radius: 6px;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+
+    .result-extra {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+
+    .result-extra span {
+      color: var(--text);
+    }
+
+    /* ---- Generic table fallback ---- */
+    .results-table-wrapper {
+      overflow-x: auto;
+    }
+
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    .results-table th {
+      text-align: left;
+      padding: 10px 14px;
+      background: var(--surface2);
+      color: var(--text-dim);
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .results-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .results-table tr:hover td {
+      background: var(--surface2);
+    }
+
+    /* ---- Loading ---- */
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 60px 20px;
+      gap: 16px;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      color: var(--text-dim);
+      font-size: 0.95rem;
+    }
+
+    /* ---- Error ---- */
+    .error-box {
+      background: rgba(248, 113, 113, 0.08);
+      border: 1px solid rgba(248, 113, 113, 0.3);
+      border-radius: 12px;
+      padding: 20px;
+      color: var(--red);
+      text-align: center;
+    }
+
+    .error-box .error-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    /* ---- Setup warning ---- */
+    .setup-banner {
+      max-width: 680px;
+      margin: 24px auto;
+      padding: 20px 24px;
+      background: rgba(245, 197, 24, 0.08);
+      border: 1px solid rgba(245, 197, 24, 0.25);
+      border-radius: 12px;
+      text-align: center;
+      color: var(--accent);
+    }
+
+    .setup-banner code {
+      background: var(--surface2);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+
+    /* ---- Footer ---- */
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      border-top: 1px solid var(--border);
+      margin-top: auto;
+    }
+
+    footer a {
+      color: var(--accent-dim);
+      text-decoration: none;
+    }
+
+    /* ---- Keyboard shortcut hint ---- */
+    .kbd-hint {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      opacity: 0.5;
+    }
+
+    .kbd-hint kbd {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-family: inherit;
+      font-size: 0.72rem;
+    }
+
+    @media (max-width: 640px) {
+      .hero { padding: 40px 16px 24px; }
+      .logo { font-size: 2rem; }
+      .tagline { font-size: 0.9rem; margin-bottom: 24px; }
+      .search-input { font-size: 1rem; padding: 14px 52px 14px 18px; }
+      .results-section { padding: 0 12px 32px; }
+      .result-card { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="hero" id="hero">
+  <div class="logo"><span class="imdb">IMDb</span> <span class="nl">NL Search</span></div>
+  <div class="tagline">Search the entire IMDb database using natural language</div>
+  <div class="search-box">
+    <input
+      type="text"
+      class="search-input"
+      id="searchInput"
+      placeholder="e.g. &quot;Horror movies from the 90s rated above 8&quot;"
+      autocomplete="off"
+    >
+    <button class="search-btn" id="searchBtn" onclick="doSearch()">
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    </button>
+  </div>
+</div>
+
+{% if not db_ready %}
+<div class="setup-banner">
+  Database not found. Run <code>python app.py setup</code> to download and process IMDb data first.
+</div>
+{% endif %}
+
+<div id="examplesSection" class="examples">
+  <div class="examples-label">Try one of these</div>
+  <div class="examples-grid" id="examplesGrid"></div>
+</div>
+
+<div class="results-section" id="resultsSection" style="display:none">
+  <div class="results-meta">
+    <span class="results-count" id="resultsCount"></span>
+    <button class="sql-toggle" id="sqlToggle" onclick="toggleSql()">Show SQL</button>
+  </div>
+  <div class="sql-block" id="sqlBlock"></div>
+  <div id="resultsContainer"></div>
+</div>
+
+<footer>
+  Data from <a href="https://developer.imdb.com/non-commercial-datasets/" target="_blank">IMDb Non-Commercial Datasets</a>.
+  For personal and non-commercial use only.
+</footer>
+
+<div class="kbd-hint"><kbd>/</kbd> to focus search</div>
+
+<script>
+const searchInput = document.getElementById('searchInput');
+const searchBtn = document.getElementById('searchBtn');
+const hero = document.getElementById('hero');
+const examplesSection = document.getElementById('examplesSection');
+const resultsSection = document.getElementById('resultsSection');
+const resultsCount = document.getElementById('resultsCount');
+const sqlBlock = document.getElementById('sqlBlock');
+const resultsContainer = document.getElementById('resultsContainer');
+
+// Known movie-result columns for rich card rendering
+const TITLE_COL = ['primarytitle', 'primary_title', 'title', 'primaryTitle'];
+const YEAR_COL = ['startyear', 'start_year', 'startYear', 'year'];
+const RATING_COL = ['averagerating', 'average_rating', 'averageRating', 'rating'];
+const VOTES_COL = ['numvotes', 'num_votes', 'numVotes', 'votes'];
+const GENRES_COL = ['genres', 'genre'];
+const NAME_COL = ['primaryname', 'primary_name', 'primaryName', 'name', 'director', 'actor'];
+
+function findCol(columns, candidates) {
+  const lower = columns.map(c => c.toLowerCase());
+  for (const c of candidates) {
+    const idx = lower.indexOf(c.toLowerCase());
+    if (idx !== -1) return columns[idx];
+  }
+  return null;
+}
+
+// Load examples
+async function loadExamples() {
+  try {
+    const resp = await fetch('/api/examples');
+    const data = await resp.json();
+    const grid = document.getElementById('examplesGrid');
+    grid.innerHTML = data.examples.map(ex =>
+      `<div class="example-chip" onclick="useExample(this)">${escapeHtml(ex)}</div>`
+    ).join('');
+  } catch (e) {
+    // silent fail
+  }
+}
+
+function useExample(el) {
+  searchInput.value = el.textContent;
+  doSearch();
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function toggleSql() {
+  sqlBlock.classList.toggle('visible');
+  document.getElementById('sqlToggle').textContent =
+    sqlBlock.classList.contains('visible') ? 'Hide SQL' : 'Show SQL';
+}
+
+async function doSearch() {
+  const query = searchInput.value.trim();
+  if (!query) return;
+
+  // Collapse hero
+  hero.classList.add('collapsed');
+  examplesSection.style.display = 'none';
+  resultsSection.style.display = 'block';
+
+  // Show loading
+  resultsCount.textContent = '';
+  sqlBlock.className = 'sql-block';
+  sqlBlock.textContent = '';
+  searchBtn.disabled = true;
+
+  resultsContainer.innerHTML = `
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <div class="loading-text">Searching IMDb with AI...</div>
+    </div>
+  `;
+
+  try {
+    const resp = await fetch('/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query }),
+    });
+
+    const data = await resp.json();
+
+    if (data.error) {
+      resultsCount.textContent = 'Error';
+      resultsContainer.innerHTML = `
+        <div class="error-box">
+          <div class="error-title">Search failed</div>
+          <div>${escapeHtml(data.error)}</div>
+        </div>
+      `;
+      if (data.sql) {
+        sqlBlock.textContent = data.sql;
+      }
+      return;
+    }
+
+    // Set SQL
+    sqlBlock.textContent = data.sql || '';
+
+    // Render results
+    if (!data.results || data.results.length === 0) {
+      resultsCount.textContent = 'No results';
+      resultsContainer.innerHTML = `
+        <div class="error-box" style="border-color: var(--border); color: var(--text-dim); background: var(--surface);">
+          <div class="error-title" style="color: var(--text);">No results found</div>
+          <div>Try rephrasing your query or broadening your search.</div>
+        </div>
+      `;
+      return;
+    }
+
+    resultsCount.textContent = `${data.row_count} result${data.row_count !== 1 ? 's' : ''}`;
+
+    const columns = data.columns;
+
+    // Check if results look like movie data (have title + at least rating or year)
+    const titleCol = findCol(columns, TITLE_COL);
+    const yearCol = findCol(columns, YEAR_COL);
+    const ratingCol = findCol(columns, RATING_COL);
+    const votesCol = findCol(columns, VOTES_COL);
+    const genresCol = findCol(columns, GENRES_COL);
+    const nameCol = findCol(columns, NAME_COL);
+
+    const isMovieResults = titleCol && (yearCol || ratingCol);
+
+    if (isMovieResults) {
+      renderCards(data.results, columns, {titleCol, yearCol, ratingCol, votesCol, genresCol, nameCol});
+    } else {
+      renderTable(data.results, columns);
+    }
+  } catch (e) {
+    resultsCount.textContent = 'Error';
+    resultsContainer.innerHTML = `
+      <div class="error-box">
+        <div class="error-title">Connection error</div>
+        <div>${escapeHtml(e.message)}</div>
+      </div>
+    `;
+  } finally {
+    searchBtn.disabled = false;
+  }
+}
+
+function renderCards(results, columns, colMap) {
+  const { titleCol, yearCol, ratingCol, votesCol, genresCol, nameCol } = colMap;
+
+  // Extra columns not already mapped
+  const mappedCols = new Set([titleCol, yearCol, ratingCol, votesCol, genresCol, nameCol].filter(Boolean));
+  const extraCols = columns.filter(c => !mappedCols.has(c) && c.toLowerCase() !== 'tconst' && c.toLowerCase() !== 'nconst' && c.toLowerCase() !== 'isadult');
+
+  resultsContainer.innerHTML = '<div class="results-grid">' + results.map(row => {
+    const title = titleCol ? (row[titleCol] || '') : '';
+    const year = yearCol ? row[yearCol] : null;
+    const rating = ratingCol ? row[ratingCol] : null;
+    const votes = votesCol ? row[votesCol] : null;
+    const genres = genresCol ? (row[genresCol] || '') : '';
+    const name = nameCol ? (row[nameCol] || '') : '';
+
+    let html = '<div class="result-card">';
+    html += '<div class="result-title-row">';
+    html += `<span class="result-title">${escapeHtml(title)}</span>`;
+    if (year) html += `<span class="result-year">(${year})</span>`;
+    if (rating !== null && rating !== undefined) {
+      html += `<span class="result-rating"><span class="star">&#9733;</span> ${Number(rating).toFixed(1)}`;
+      if (votes) html += ` <span class="result-votes">(${Number(votes).toLocaleString()} votes)</span>`;
+      html += '</span>';
+    }
+    html += '</div>';
+
+    if (genres) {
+      html += '<div class="result-details">';
+      genres.split(',').forEach(g => {
+        if (g.trim()) html += `<span class="result-tag">${escapeHtml(g.trim())}</span>`;
+      });
+      html += '</div>';
+    }
+
+    // Extra fields
+    const extras = [];
+    if (name && !title.includes(name)) extras.push(name);
+    for (const col of extraCols) {
+      const val = row[col];
+      if (val !== null && val !== undefined && val !== '' && val !== '\\N') {
+        extras.push(`<span>${escapeHtml(col)}</span>: ${escapeHtml(String(val))}`);
+      }
+    }
+    if (extras.length) {
+      html += '<div class="result-extra">' + extras.join(' &middot; ') + '</div>';
+    }
+
+    html += '</div>';
+    return html;
+  }).join('') + '</div>';
+}
+
+function renderTable(results, columns) {
+  // Filter out internal ID columns
+  const displayCols = columns.filter(c =>
+    c.toLowerCase() !== 'tconst' && c.toLowerCase() !== 'nconst'
+  );
+  if (displayCols.length === 0) {
+    // Fall back to all columns
+    displayCols.push(...columns);
+  }
+
+  let html = '<div class="results-table-wrapper"><table class="results-table">';
+  html += '<thead><tr>' + displayCols.map(c => `<th>${escapeHtml(c)}</th>`).join('') + '</tr></thead>';
+  html += '<tbody>';
+  for (const row of results) {
+    html += '<tr>' + displayCols.map(c => {
+      const val = row[c];
+      const display = (val === null || val === undefined) ? '' : String(val);
+      return `<td title="${escapeHtml(display)}">${escapeHtml(display)}</td>`;
+    }).join('') + '</tr>';
+  }
+  html += '</tbody></table></div>';
+  resultsContainer.innerHTML = html;
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (e.key === '/' && document.activeElement !== searchInput) {
+    e.preventDefault();
+    searchInput.focus();
+  }
+  if (e.key === 'Enter' && document.activeElement === searchInput) {
+    doSearch();
+  }
+  if (e.key === 'Escape') {
+    searchInput.blur();
+  }
+});
+
+// Reset view when search is cleared
+searchInput.addEventListener('input', () => {
+  if (!searchInput.value.trim()) {
+    hero.classList.remove('collapsed');
+    examplesSection.style.display = '';
+    resultsSection.style.display = 'none';
+  }
+});
+
+// Init
+loadExamples();
+searchInput.focus();
+</script>
+</body>
+</html>
