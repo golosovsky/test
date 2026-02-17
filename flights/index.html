@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flight Search - Find Cheap Flights</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    header {
+      text-align: center;
+      padding: 24px 0 16px;
+    }
+
+    header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+
+    header p {
+      color: #64748b;
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
+
+    /* API key banner */
+    .api-banner {
+      background: #1e293b;
+      border: 1px solid #f59e0b;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .api-banner h3 {
+      color: #f59e0b;
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+    }
+
+    .api-banner p {
+      color: #94a3b8;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    .api-banner a {
+      color: #38bdf8;
+      text-decoration: none;
+    }
+
+    .api-banner a:hover { text-decoration: underline; }
+
+    .api-banner .key-input-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .api-banner .key-input-row input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 0.85rem;
+      font-family: monospace;
+    }
+
+    .api-banner .key-input-row button {
+      padding: 8px 16px;
+      background: #f59e0b;
+      color: #0f172a;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    /* Search form */
+    .search-panel {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid #334155;
+      margin-bottom: 16px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .form-group {
+      flex: 1;
+      min-width: 180px;
+      position: relative;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      margin-bottom: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid #334155;
+      border-radius: 8px;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus, .form-group select:focus {
+      border-color: #3b82f6;
+    }
+
+    .form-group select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+    }
+
+    .autocomplete-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 100;
+      margin-top: 2px;
+      display: none;
+    }
+
+    .autocomplete-item {
+      padding: 10px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #273548;
+      transition: background 0.15s;
+    }
+
+    .autocomplete-item:last-child { border-bottom: none; }
+    .autocomplete-item:hover { background: #334155; }
+
+    .autocomplete-item .loc-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .autocomplete-item .loc-detail {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .autocomplete-item .loc-type {
+      display: inline-block;
+      font-size: 0.65rem;
+      background: #334155;
+      color: #94a3b8;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      text-transform: uppercase;
+    }
+
+    /* Layover config */
+    .layover-section {
+      display: flex;
+      gap: 12px;
+      align-items: end;
+      flex-wrap: wrap;
+    }
+
+    .layover-section .form-group {
+      min-width: 120px;
+      flex: unset;
+    }
+
+    /* Search button */
+    .search-btn {
+      width: 100%;
+      padding: 14px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 4px;
+    }
+
+    .search-btn:hover { background: #2563eb; }
+
+    .search-btn:disabled {
+      background: #334155;
+      color: #64748b;
+      cursor: not-allowed;
+    }
+
+    .search-btn.loading {
+      background: #1e40af;
+      cursor: wait;
+    }
+
+    /* Results */
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 20px 0 12px;
+    }
+
+    .results-header h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .results-count {
+      font-size: 0.85rem;
+      color: #64748b;
+    }
+
+    .results-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .flight-card {
+      background: #1e293b;
+      border-radius: 12px;
+      border: 1px solid #334155;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .flight-card:hover {
+      border-color: #475569;
+    }
+
+    .flight-main {
+      display: flex;
+      align-items: stretch;
+      padding: 16px;
+      gap: 16px;
+    }
+
+    .flight-price {
+      min-width: 90px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-left: 1px solid #334155;
+      padding-left: 16px;
+    }
+
+    .price-amount {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #22c55e;
+      line-height: 1;
+    }
+
+    .price-currency {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .flight-route {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .route-cities {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .route-cities .arrow { color: #64748b; margin: 0 6px; }
+
+    .route-meta {
+      display: flex;
+      gap: 16px;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      flex-wrap: wrap;
+    }
+
+    .route-meta span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .stops-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .stops-badge.direct {
+      background: #166534;
+      color: #4ade80;
+    }
+
+    .stops-badge.stops {
+      background: #713f12;
+      color: #fbbf24;
+    }
+
+    .flight-legs {
+      background: #172033;
+      padding: 12px 16px;
+      display: none;
+    }
+
+    .flight-legs.open { display: block; }
+
+    .leg-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .leg-row:last-child { border-bottom: none; }
+
+    .leg-airline {
+      width: 36px;
+      height: 36px;
+      background: #334155;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      flex-shrink: 0;
+    }
+
+    .leg-info { flex: 1; }
+
+    .leg-cities {
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+
+    .leg-times {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+
+    .leg-flight-no {
+      font-size: 0.7rem;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .layover-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0 6px 48px;
+      font-size: 0.8rem;
+      color: #f59e0b;
+    }
+
+    .layover-row .layover-dot {
+      width: 6px;
+      height: 6px;
+      background: #f59e0b;
+      border-radius: 50%;
+    }
+
+    .flight-actions {
+      display: flex;
+      gap: 8px;
+      padding: 0 16px 12px;
+      flex-wrap: wrap;
+    }
+
+    .flight-actions a, .flight-actions button {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: background 0.2s;
+    }
+
+    .btn-book {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .btn-book:hover { background: #2563eb; }
+
+    .btn-google {
+      background: #334155;
+      color: #e2e8f0;
+    }
+
+    .btn-google:hover { background: #475569; }
+
+    .btn-details {
+      background: transparent;
+      color: #94a3b8;
+      border: 1px solid #334155 !important;
+    }
+
+    .btn-details:hover { background: #334155; color: #e2e8f0; }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: #64748b;
+    }
+
+    .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+
+    .error-msg {
+      background: #1e293b;
+      border: 1px solid #ef4444;
+      border-radius: 10px;
+      padding: 16px;
+      color: #fca5a5;
+      margin: 16px 0;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #1e293b; }
+    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+
+    @media (max-width: 600px) {
+      .flight-main { flex-direction: column; }
+      .flight-price {
+        border-left: none;
+        padding-left: 0;
+        padding-top: 8px;
+        border-top: 1px solid #334155;
+        flex-direction: row;
+        gap: 8px;
+      }
+      .form-group { min-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Flight Search</h1>
+      <p>Find the cheapest flights between countries, including multi-leg routes</p>
+    </header>
+
+    <div id="apiBanner" class="api-banner">
+      <h3>API Key Required</h3>
+      <p>
+        This app uses the <a href="https://tequila.kiwi.com/" target="_blank">Kiwi.com Tequila API</a> (free).
+        Get your API key there, then either:
+      </p>
+      <p style="margin-top:6px">
+        1. Set it server-side: <code style="color:#38bdf8">TEQUILA_API_KEY=your_key node server.js</code><br>
+        2. Or enter it below (stored in your browser only):
+      </p>
+      <div class="key-input-row">
+        <input type="password" id="apiKeyInput" placeholder="Paste your Tequila API key...">
+        <button onclick="saveApiKey()">Save</button>
+      </div>
+    </div>
+
+    <div class="search-panel">
+      <div class="form-row">
+        <div class="form-group">
+          <label>From (country, city, or airport)</label>
+          <input type="text" id="fromInput" placeholder="e.g. Israel, Tel Aviv, TLV" autocomplete="off">
+          <div id="fromAutocomplete" class="autocomplete-list"></div>
+        </div>
+        <div class="form-group">
+          <label>To (country, city, or airport)</label>
+          <input type="text" id="toInput" placeholder="e.g. Scotland, Edinburgh, EDI" autocomplete="off">
+          <div id="toAutocomplete" class="autocomplete-list"></div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Earliest departure</label>
+          <input type="date" id="dateFrom">
+        </div>
+        <div class="form-group">
+          <label>Latest departure</label>
+          <input type="date" id="dateTo">
+        </div>
+      </div>
+
+      <div class="form-row layover-section">
+        <div class="form-group" style="flex:1;min-width:140px">
+          <label>Max stopovers</label>
+          <select id="maxStopovers">
+            <option value="0">Direct only</option>
+            <option value="1">Up to 1 stop</option>
+            <option value="2" selected>Up to 2 stops</option>
+            <option value="3">Up to 3 stops</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px">
+          <label>Min layover</label>
+          <select id="stopoverFrom">
+            <option value="">Any</option>
+            <option value="1:00">1 hour</option>
+            <option value="2:00" selected>2 hours</option>
+            <option value="3:00">3 hours</option>
+            <option value="4:00">4 hours</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px">
+          <label>Max layover</label>
+          <select id="stopoverTo">
+            <option value="">Any</option>
+            <option value="4:00">4 hours</option>
+            <option value="6:00">6 hours</option>
+            <option value="8:00">8 hours</option>
+            <option value="12:00" selected>12 hours</option>
+            <option value="24:00">24 hours (overnight)</option>
+            <option value="48:00">48 hours</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1;min-width:120px">
+          <label>Currency</label>
+          <select id="currency">
+            <option value="EUR">EUR</option>
+            <option value="USD">USD</option>
+            <option value="GBP">GBP</option>
+            <option value="ILS">ILS</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="search-btn" id="searchBtn" onclick="searchFlights()">Search Flights</button>
+    </div>
+
+    <div id="resultsArea"></div>
+  </div>
+
+  <script>
+    // State
+    let fromLocation = null;
+    let toLocation = null;
+    let debounceTimer = null;
+    let clientApiKey = localStorage.getItem('tequila_api_key') || '';
+
+    // Set default dates: tomorrow to 2 weeks from now
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const twoWeeks = new Date();
+    twoWeeks.setDate(twoWeeks.getDate() + 14);
+    document.getElementById('dateFrom').value = formatDateISO(tomorrow);
+    document.getElementById('dateTo').value = formatDateISO(twoWeeks);
+
+    // Check API status on load
+    checkApiStatus();
+
+    // Autocomplete setup
+    setupAutocomplete('fromInput', 'fromAutocomplete', (loc) => { fromLocation = loc; });
+    setupAutocomplete('toInput', 'toAutocomplete', (loc) => { toLocation = loc; });
+
+    function formatDateISO(d) {
+      return d.toISOString().split('T')[0];
+    }
+
+    function formatDateTequila(isoStr) {
+      // Convert yyyy-mm-dd to dd/mm/yyyy
+      const [y, m, d] = isoStr.split('-');
+      return `${d}/${m}/${y}`;
+    }
+
+    async function checkApiStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        if (!data.apiConfigured && !clientApiKey) {
+          document.getElementById('apiBanner').style.display = 'block';
+        }
+      } catch (e) {
+        // Server not running or can't reach it
+      }
+    }
+
+    function saveApiKey() {
+      const key = document.getElementById('apiKeyInput').value.trim();
+      if (key) {
+        clientApiKey = key;
+        localStorage.setItem('tequila_api_key', key);
+        document.getElementById('apiBanner').style.display = 'none';
+      }
+    }
+
+    function setupAutocomplete(inputId, listId, onSelect) {
+      const input = document.getElementById(inputId);
+      const list = document.getElementById(listId);
+
+      input.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        const q = input.value.trim();
+        if (q.length < 2) {
+          list.style.display = 'none';
+          return;
+        }
+        debounceTimer = setTimeout(() => fetchLocations(q, list, input, onSelect), 300);
+      });
+
+      input.addEventListener('focus', () => {
+        if (list.children.length > 0) list.style.display = 'block';
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest(`#${inputId}`) && !e.target.closest(`#${listId}`)) {
+          list.style.display = 'none';
+        }
+      });
+    }
+
+    async function fetchLocations(query, listEl, inputEl, onSelect) {
+      try {
+        const res = await fetch(`/api/locations?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+
+        if (!data.locations || data.locations.length === 0) {
+          listEl.innerHTML = '<div class="autocomplete-item"><span class="loc-name">No results</span></div>';
+          listEl.style.display = 'block';
+          return;
+        }
+
+        listEl.innerHTML = data.locations.map((loc, i) => {
+          let detail = '';
+          if (loc.type === 'airport') detail = `${loc.city}, ${loc.country} (${loc.code})`;
+          else if (loc.type === 'city') detail = loc.country;
+          else if (loc.type === 'country') detail = loc.code;
+
+          return `
+            <div class="autocomplete-item" data-index="${i}">
+              <span class="loc-name">${escHtml(loc.name)}</span>
+              <span class="loc-type">${loc.type}</span>
+              <div class="loc-detail">${escHtml(detail)}</div>
+            </div>
+          `;
+        }).join('');
+
+        listEl.style.display = 'block';
+
+        listEl.querySelectorAll('.autocomplete-item').forEach((item, i) => {
+          item.addEventListener('click', () => {
+            const loc = data.locations[i];
+            onSelect(loc);
+            inputEl.value = loc.type === 'airport'
+              ? `${loc.name} (${loc.code})`
+              : `${loc.name} (${loc.type})`;
+            listEl.style.display = 'none';
+          });
+        });
+      } catch (e) {
+        listEl.innerHTML = '<div class="autocomplete-item"><span class="loc-name">Error searching</span></div>';
+        listEl.style.display = 'block';
+      }
+    }
+
+    async function searchFlights() {
+      if (!fromLocation || !toLocation) {
+        showError('Please select a departure and destination from the dropdown suggestions.');
+        return;
+      }
+
+      const dateFrom = document.getElementById('dateFrom').value;
+      const dateTo = document.getElementById('dateTo').value;
+      if (!dateFrom || !dateTo) {
+        showError('Please select departure date range.');
+        return;
+      }
+
+      const btn = document.getElementById('searchBtn');
+      btn.disabled = true;
+      btn.classList.add('loading');
+      btn.textContent = 'Searching...';
+
+      const params = new URLSearchParams({
+        fly_from: fromLocation.id,
+        fly_to: toLocation.id,
+        date_from: formatDateTequila(dateFrom),
+        date_to: formatDateTequila(dateTo),
+        max_stopovers: document.getElementById('maxStopovers').value,
+        curr: document.getElementById('currency').value,
+        limit: '40',
+        sort: 'price',
+      });
+
+      const stopFrom = document.getElementById('stopoverFrom').value;
+      const stopTo = document.getElementById('stopoverTo').value;
+      if (stopFrom) params.set('stopover_from', stopFrom);
+      if (stopTo) params.set('stopover_to', stopTo);
+
+      try {
+        const res = await fetch(`/api/search?${params}`);
+        const data = await res.json();
+
+        if (data.error) {
+          showError(data.error + (data.help ? ` ${data.help}` : ''));
+          return;
+        }
+
+        renderResults(data);
+      } catch (e) {
+        showError('Failed to search flights. Check your connection and try again.');
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('loading');
+        btn.textContent = 'Search Flights';
+      }
+    }
+
+    function renderResults(data) {
+      const area = document.getElementById('resultsArea');
+
+      if (!data.flights || data.flights.length === 0) {
+        area.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">&#9992;</div>
+            <div>No flights found for these dates and criteria.</div>
+            <div style="margin-top:8px;font-size:0.85rem;color:#94a3b8">
+              Try expanding your date range or allowing more stopovers.
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      area.innerHTML = `
+        <div class="results-header">
+          <h2>Results</h2>
+          <span class="results-count">${data.flights.length} flights found</span>
+        </div>
+        <div class="results-list">
+          ${data.flights.map((f, i) => renderFlightCard(f, i)).join('')}
+        </div>
+      `;
+    }
+
+    function renderFlightCard(flight, index) {
+      const totalHours = Math.floor(flight.totalDurationSeconds / 3600);
+      const totalMins = Math.round((flight.totalDurationSeconds % 3600) / 60);
+      const durationStr = totalHours > 0 ? `${totalHours}h ${totalMins}m` : `${totalMins}m`;
+
+      const firstLeg = flight.legs[0];
+      const lastLeg = flight.legs[flight.legs.length - 1];
+      const depTime = formatTime(firstLeg.departure);
+      const arrTime = formatTime(lastLeg.arrival);
+      const depDate = formatDateShort(firstLeg.departure);
+
+      const stopsBadge = flight.stops === 0
+        ? '<span class="stops-badge direct">Direct</span>'
+        : `<span class="stops-badge stops">${flight.stops} stop${flight.stops > 1 ? 's' : ''}</span>`;
+
+      const airlines = flight.airlines.join(', ');
+
+      // Build Google Flights search URL
+      const googleFlightsUrl = buildGoogleFlightsUrl(flight);
+
+      // Build legs detail HTML
+      const legsHtml = buildLegsHtml(flight);
+
+      return `
+        <div class="flight-card">
+          <div class="flight-main">
+            <div class="flight-route">
+              <div class="route-cities">
+                ${escHtml(flight.cityFrom)}<span class="arrow">&#8594;</span>${escHtml(flight.cityTo)}
+              </div>
+              <div class="route-meta">
+                <span>${depDate}</span>
+                <span>${depTime} - ${arrTime}</span>
+                <span>${durationStr}</span>
+                ${stopsBadge}
+                <span>${escHtml(airlines)}</span>
+              </div>
+              ${flight.layovers.length > 0 ? `
+                <div style="font-size:0.75rem;color:#f59e0b;margin-top:4px">
+                  via ${flight.layovers.map(l => `${escHtml(l.city)} (${formatDuration(l.durationMinutes)})`).join(', ')}
+                </div>
+              ` : ''}
+            </div>
+            <div class="flight-price">
+              <div class="price-amount">${flight.price}</div>
+              <div class="price-currency">${flight.currency}</div>
+            </div>
+          </div>
+          <div class="flight-actions">
+            ${flight.bookingLink ? `<a class="btn-book" href="${escAttr(flight.bookingLink)}" target="_blank">Book on Kiwi</a>` : ''}
+            <a class="btn-google" href="${escAttr(googleFlightsUrl)}" target="_blank">Google Flights</a>
+            <button class="btn-details" onclick="toggleLegs(${index})">Details</button>
+          </div>
+          <div class="flight-legs" id="legs-${index}">
+            ${legsHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    function buildLegsHtml(flight) {
+      let html = '';
+      for (let i = 0; i < flight.legs.length; i++) {
+        const leg = flight.legs[i];
+        html += `
+          <div class="leg-row">
+            <div class="leg-airline">${escHtml(leg.airline)}</div>
+            <div class="leg-info">
+              <div class="leg-cities">
+                ${escHtml(leg.from.city)} (${escHtml(leg.from.airport)}) &#8594;
+                ${escHtml(leg.to.city)} (${escHtml(leg.to.airport)})
+              </div>
+              <div class="leg-times">
+                ${formatTime(leg.departure)} - ${formatTime(leg.arrival)}
+                &middot; ${formatDateShort(leg.departure)}
+              </div>
+              <div class="leg-flight-no">
+                ${escHtml(leg.flightNo)}
+                &middot; Search: <a href="${escAttr(buildLegGoogleUrl(leg))}" target="_blank" style="color:#38bdf8">Google Flights</a>
+                &middot; <a href="${escAttr(buildAirlineUrl(leg))}" target="_blank" style="color:#38bdf8">${escHtml(leg.airline)} website</a>
+              </div>
+            </div>
+          </div>
+        `;
+
+        if (i < flight.layovers.length) {
+          const layover = flight.layovers[i];
+          html += `
+            <div class="layover-row">
+              <span class="layover-dot"></span>
+              Layover in ${escHtml(layover.city)} (${escHtml(layover.airport)}) &middot; ${formatDuration(layover.durationMinutes)}
+            </div>
+          `;
+        }
+      }
+      return html;
+    }
+
+    function buildGoogleFlightsUrl(flight) {
+      const firstLeg = flight.legs[0];
+      const lastLeg = flight.legs[flight.legs.length - 1];
+      const dep = firstLeg.departure.split('T')[0];
+      const from = firstLeg.from.airport;
+      const to = lastLeg.to.airport;
+      return `https://www.google.com/travel/flights?q=flights+from+${from}+to+${to}+on+${dep}`;
+    }
+
+    function buildLegGoogleUrl(leg) {
+      const dep = leg.departure.split('T')[0];
+      return `https://www.google.com/travel/flights?q=flights+from+${leg.from.airport}+to+${leg.to.airport}+on+${dep}`;
+    }
+
+    function buildAirlineUrl(leg) {
+      // Map common IATA codes to airline websites
+      const airlineSites = {
+        'W6': 'https://wizzair.com',
+        'FR': 'https://www.ryanair.com',
+        'U2': 'https://www.easyjet.com',
+        'LH': 'https://www.lufthansa.com',
+        'BA': 'https://www.britishairways.com',
+        'AF': 'https://www.airfrance.com',
+        'KL': 'https://www.klm.com',
+        'LY': 'https://www.elal.com',
+        'TK': 'https://www.turkishairlines.com',
+        'AZ': 'https://www.ita-airways.com',
+        'VY': 'https://www.vueling.com',
+        'PC': 'https://www.flypgs.com',
+        'QS': 'https://www.smartwings.com',
+        'EW': 'https://www.eurowings.com',
+        'OS': 'https://www.austrian.com',
+        'LX': 'https://www.swiss.com',
+        'SK': 'https://www.flysas.com',
+        'AY': 'https://www.finnair.com',
+        'TP': 'https://www.flytap.com',
+        'IB': 'https://www.iberia.com',
+        'EI': 'https://www.aerlingus.com',
+        'A3': 'https://www.aegeanair.com',
+        'BT': 'https://www.airbaltic.com',
+        'RO': 'https://www.tarom.ro',
+        '6H': 'https://www.israir.co.il',
+      };
+      return airlineSites[leg.airline] || `https://www.google.com/search?q=${encodeURIComponent(leg.airline + ' airline website')}`;
+    }
+
+    function toggleLegs(index) {
+      const el = document.getElementById(`legs-${index}`);
+      el.classList.toggle('open');
+    }
+
+    function formatTime(isoStr) {
+      if (!isoStr) return '';
+      const d = new Date(isoStr);
+      return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function formatDateShort(isoStr) {
+      if (!isoStr) return '';
+      const d = new Date(isoStr);
+      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', weekday: 'short' });
+    }
+
+    function formatDuration(minutes) {
+      if (minutes < 60) return `${minutes}m`;
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return m > 0 ? `${h}h ${m}m` : `${h}h`;
+    }
+
+    function showError(msg) {
+      document.getElementById('resultsArea').innerHTML = `
+        <div class="error-msg">${escHtml(msg)}</div>
+      `;
+    }
+
+    function escHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function escAttr(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // Allow Enter to search
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.target.closest('.autocomplete-list') && !e.target.closest('.key-input-row')) {
+        searchFlights();
+      }
+    });
+  </script>
+</body>
+</html>

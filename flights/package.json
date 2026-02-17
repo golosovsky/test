@@ -1,0 +1,9 @@
+{
+  "name": "flight-search",
+  "version": "1.0.0",
+  "description": "Search for cheap flights between countries with multi-leg route discovery",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
