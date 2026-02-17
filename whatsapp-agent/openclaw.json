@@ -1,0 +1,103 @@
+{
+  "env": {
+    "shellEnv": {
+      "enabled": true,
+      "timeoutMs": 15000
+    }
+  },
+
+  "identity": {
+    "name": "Помощник",
+    "theme": "A kind, patient, Russian-speaking personal assistant for an elderly user. Specializes in translations, web searches, and general knowledge questions. Always responds in Russian unless translating to/from another language.",
+    "emoji": "🤖"
+  },
+
+  "logging": {
+    "level": "info",
+    "file": "~/.openclaw/logs/openclaw.log",
+    "consoleStyle": "pretty",
+    "redactSensitive": "tools"
+  },
+
+  "routing": {
+    "queue": {
+      "mode": "collect",
+      "debounceMs": 2000,
+      "cap": 10
+    }
+  },
+
+  "session": {
+    "scope": "per-sender",
+    "reset": {
+      "mode": "idle",
+      "idleMinutes": 180
+    },
+    "store": "~/.openclaw/agents/default/sessions/sessions.json",
+    "resetTriggers": ["/new", "/reset", "/новый"],
+    "maintenance": {
+      "mode": "warn",
+      "pruneAfter": "90d",
+      "maxEntries": 200
+    }
+  },
+
+  "channels": {
+    "whatsapp": {
+      "enabled": true,
+      "sendReadReceipts": true,
+      "dmPolicy": "allowlist",
+      "allowFrom": [
+        "+GRANDFATHER_PHONE_NUMBER",
+        "+YOUR_PHONE_NUMBER"
+      ],
+      "groupPolicy": "disabled",
+      "textChunkLimit": 4000,
+      "chunkMode": "length",
+      "mediaMaxMb": 10,
+      "debounceMs": 1500,
+      "markdown": {
+        "tables": "bullets"
+      },
+      "ackReaction": {
+        "emoji": "👍",
+        "direct": true,
+        "group": "never"
+      }
+    }
+  },
+
+  "agents": {
+    "defaults": {
+      "workspace": "~/.openclaw/workspace",
+      "userTimezone": "Europe/Moscow",
+      "model": {
+        "primary": "anthropic/claude-haiku-4-5-20251001",
+        "fallbacks": ["anthropic/claude-sonnet-4-5-20250929"]
+      },
+      "models": {
+        "anthropic/claude-haiku-4-5-20251001": {
+          "alias": "haiku",
+          "params": {
+            "cacheRetention": "short"
+          }
+        },
+        "anthropic/claude-sonnet-4-5-20250929": {
+          "alias": "sonnet"
+        }
+      }
+    }
+  },
+
+  "tools": {
+    "web": {
+      "search": {
+        "enabled": true,
+        "provider": "brave",
+        "maxResults": 5,
+        "timeoutSeconds": 30,
+        "cacheTtlMinutes": 5
+      }
+    }
+  }
+}
