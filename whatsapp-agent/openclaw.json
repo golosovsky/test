@@ -24,7 +24,7 @@
     "web": {
       "search": {
         "enabled": true,
-        "provider": "brave",
+        "provider": "anthropic",
         "maxResults": 5
       }
     }
