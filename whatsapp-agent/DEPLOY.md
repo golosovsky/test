@@ -6,21 +6,18 @@ A Russian-speaking AI assistant that lives in WhatsApp, powered by
 ## What You Get
 
 - Your grandfather messages a WhatsApp contact, gets AI responses in Russian
-- Translations (Russian ↔ Hebrew, English, etc.)
+- Translations (Russian <-> Hebrew, English, etc.)
 - Web search (weather, news, general questions)
 - Casual conversation with memory within a session
 - Sessions auto-reset after 3 hours of inactivity
 - Runs 24/7 on a free cloud server
 
-## Prerequisites (Your Tasks)
+## Prerequisites
 
 ### 1. Get a Prepaid SIM Card
 
 Buy a cheap prepaid SIM that can receive one SMS. This will be the
-WhatsApp number your grandfather texts. Using a separate number protects
-your grandfather's personal WhatsApp from any risk of account flagging.
-
-**Cost:** ~$5 one-time
+WhatsApp number your grandfather texts.
 
 ### 2. Register WhatsApp on the New SIM
 
@@ -32,10 +29,9 @@ your grandfather's personal WhatsApp from any risk of account flagging.
 ### 3. Get an Anthropic API Key
 
 1. Go to https://console.anthropic.com
-2. Create an account
-3. Add a payment method (credit card)
-4. Go to Settings → API Keys → Create Key
-5. Copy the key (starts with `sk-ant-`)
+2. Create an account, add a payment method
+3. Go to Settings -> API Keys -> Create Key
+4. Copy the key (starts with `sk-ant-`)
 
 **Cost:** ~$1-5/month for light usage with Claude Haiku 4.5
 
@@ -45,193 +41,104 @@ your grandfather's personal WhatsApp from any risk of account flagging.
 2. Sign up for the **Free** plan (2,000 queries/month)
 3. Copy your API key (starts with `BSA-`)
 
-**Cost:** $0 (free tier is plenty for personal use)
+### 5. Create a Cloud VM
 
-### 5. Create an Oracle Cloud Account
+Oracle Cloud Free Tier (or any Ubuntu 22.04+ VM):
 
-1. Go to https://cloud.oracle.com and sign up
-2. Choose a **Home Region** close to your grandfather's location
-   - If in Israel: choose a nearby European region
-   - If in Russia: choose a nearby region
-3. Provide a credit card for verification (you will NOT be charged)
-4. After account creation, **upgrade to Pay-As-You-Go** (still free):
-   - This prevents Oracle from reclaiming your free instance for being idle
-   - You only pay if you manually create resources beyond the free limits
+1. Image: **Ubuntu 22.04+**
+2. Shape: **VM.Standard.A1.Flex** (2 OCPUs, 12 GB RAM)
+3. Add your SSH public key
+4. **Upgrade to Pay-As-You-Go** to prevent idle reclamation (still free)
 
-## Server Setup
+## One-Shot Setup
 
-### Step 1: Create the VM
-
-1. In Oracle Cloud Console, go to **Compute → Instances → Create Instance**
-2. Image: **Ubuntu 22.04** (or later)
-3. Shape: **VM.Standard.A1.Flex** (Ampere ARM)
-   - OCPUs: **2** (4 max free, but 2 is plenty)
-   - Memory: **12 GB** (24 max free, but 12 is plenty)
-4. Add your SSH public key
-5. Click **Create**
-
-> If you get a capacity error, try again in a few hours or pick a
-> less popular region. ARM instances are in high demand.
-
-### Step 2: SSH into the Server
+SSH into your server and run:
 
 ```bash
-ssh ubuntu@<your-server-ip>
-```
-
-### Step 3: Run the Setup Script
-
-Upload and run the setup script:
-
-```bash
-# Option A: Copy the script from your machine
-scp setup-oracle.sh ubuntu@<your-server-ip>:~/
-
-# On the server:
-bash ~/setup-oracle.sh
-```
-
-### Step 4: Upload Configuration Files
-
-From your local machine:
-
-```bash
-scp -r openclaw.json docker-compose.yml skills/ .env.example \
-    ubuntu@<your-server-ip>:~/whatsapp-agent/
-```
-
-### Step 5: Configure Environment Variables
-
-On the server:
-
-```bash
+git clone <this-repo> ~/whatsapp-agent
 cd ~/whatsapp-agent
-cp .env.example .env
-nano .env
+bash setup.sh
 ```
 
-Fill in:
-- `OPENCLAW_GATEWAY_TOKEN` — run `openssl rand -hex 32` to generate
-- `ANTHROPIC_API_KEY` — your `sk-ant-...` key
-- `BRAVE_API_KEY` — your `BSA-...` key
+The script handles everything:
+1. Installs Docker + Docker Compose
+2. Creates `~/.openclaw` with correct permissions (700)
+3. Copies config and skills
+4. Prompts for API keys and phone numbers
+5. Starts OpenClaw and runs `doctor --fix`
+6. Shows a QR code — scan with WhatsApp Linked Devices
+7. Restarts the gateway to pick up the WhatsApp session
+8. Runs final verification
 
-### Step 6: Edit Phone Numbers
+## Architecture (Lessons Learned)
 
-Edit `openclaw.json` and replace the placeholder phone numbers:
+### Volume Mounts
 
-```bash
-nano openclaw.json
-```
+The container bind-mounts `~/.openclaw` from the host as its config/state
+directory. We do NOT use a named Docker volume because combining a named
+volume with bind-mount overlays into subdirectories causes `EBUSY: resource
+busy or locked` errors when OpenClaw tries to atomically rename config files.
 
-Find the `allowFrom` section and replace:
-- `+GRANDFATHER_PHONE_NUMBER` → your grandfather's actual number (e.g. `+79161234567`)
-- `+YOUR_PHONE_NUMBER` → your own number (for testing/admin)
+### WhatsApp Linking
 
-### Step 7: Start OpenClaw
+After scanning the QR code, the gateway process (PID 1) must be restarted
+so it loads the new WhatsApp session credentials. Without this restart, the
+health-monitor will show `reason: stopped` for the WhatsApp channel and
+messages won't be received.
 
-```bash
-cd ~/whatsapp-agent
-docker compose up -d
-```
+### DM Policy
 
-### Step 8: Link WhatsApp
+The `dmPolicy: "allowlist"` setting silently drops messages from numbers
+not in the `allowFrom` array. There is no error in the logs. If the bot
+isn't responding, check this first.
 
-Run the onboard wizard:
+### Permissions
 
-```bash
-docker compose exec openclaw node dist/index.js onboard
-```
-
-- Select **WhatsApp** as the channel
-- A **QR code** will appear in the terminal
-- On the phone with the new SIM:
-  - Open WhatsApp → Settings → **Linked Devices** → **Link a Device**
-  - Scan the QR code
-- The link is established. OpenClaw now receives and sends WhatsApp messages.
-
-> The QR code expires quickly. If it times out, run the onboard
-> command again.
-
-### Step 9: Test It
-
-From your grandfather's WhatsApp (or your own phone if your number is
-in the allowlist), send a message to the bot's WhatsApp number:
-
-```
-Привет! Переведи "здравствуйте" на иврит
-```
-
-You should get a response in Russian within a few seconds.
+- `~/.openclaw` must be `chmod 700` (contains WhatsApp session keys)
+- `~/.openclaw/openclaw.json` must be `chmod 600`
+- `.env` must be `chmod 600` (contains API keys)
 
 ## Maintenance
 
-### View Logs
-
 ```bash
 cd ~/whatsapp-agent
+
+# View logs
 docker compose logs -f openclaw
-```
 
-### Restart
-
-```bash
+# Restart
 docker compose restart openclaw
+
+# Update OpenClaw
+docker compose pull && docker compose up -d
+
+# Health check
+docker compose exec openclaw node dist/index.js doctor
+
+# Check WhatsApp status
+docker compose exec openclaw node dist/index.js channels status
 ```
 
-### Update OpenClaw
-
-```bash
-docker compose pull
-docker compose up -d
-```
-
-### Check Session Logs
-
-Sessions are stored in the Docker volume. To inspect:
-
-```bash
-docker compose exec openclaw bash -c \
-  'ls -la ~/.openclaw/agents/*/sessions/*.jsonl'
-```
-
-### Monitor Costs
-
-Check your Anthropic API usage at https://console.anthropic.com/settings/usage
-
-## Configuration Reference
-
-### Session Behavior
-
-Current config: sessions reset after **3 hours of inactivity** (`idleMinutes: 180`).
-
-To change this, edit `openclaw.json`:
-
-```json
-"session": {
-  "reset": {
-    "mode": "idle",
-    "idleMinutes": 180
-  }
-}
-```
-
-- Set to `360` for 6-hour sessions
-- Set `"mode": "daily"` with `"atHour": 4` to reset every night at 4 AM instead
+## Configuration
 
 ### Allowed Users
 
-Only numbers listed in `allowFrom` can chat with the bot. To add more:
+Only numbers in `allowFrom` can chat. Edit `~/.openclaw/openclaw.json`:
 
 ```json
 "allowFrom": [
   "+79161234567",
-  "+79169876543"
+  "+972545202413"
 ]
 ```
 
+### Session Timeout
+
+Sessions reset after 3 hours idle (`idleMinutes: 180`).
+
 ### Model
 
-Currently using Claude Haiku 4.5. To upgrade to Sonnet (better but ~3x more expensive):
+Using Claude Haiku 4.5 (fast, cheap). To upgrade to Sonnet (better, ~3x cost):
 
 ```json
 "model": {
@@ -241,33 +148,32 @@ Currently using Claude Haiku 4.5. To upgrade to Sonnet (better but ~3x more expe
 
 ### Timezone
 
-Set in `agents.defaults.userTimezone`. Currently `Europe/Moscow`. Change to
-match your grandfather's location (e.g. `Asia/Jerusalem`).
+Set `agents.defaults.userTimezone` in `~/.openclaw/openclaw.json`.
 
 ## Troubleshooting
 
-| Problem | Solution |
-|---------|----------|
-| QR code expired | Run `docker compose exec openclaw node dist/index.js onboard` again |
-| No response to messages | Check `docker compose logs -f openclaw` for errors |
-| "API key invalid" | Verify `ANTHROPIC_API_KEY` in `.env`, restart: `docker compose restart` |
-| WhatsApp disconnected | Phone must stay online. If offline >14 days, re-link. |
-| Oracle instance stopped | Check Oracle console; upgrade to PAYG to prevent idle reclamation |
-| High API costs | Check usage at console.anthropic.com; reduce `idleMinutes` to shorten sessions |
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| EBUSY errors on config write | Named Docker volume + bind mounts | Use host dir mount (`~/.openclaw`) — not a named volume |
+| Bot doesn't respond (no errors in logs) | Phone number not in allowlist | Add number to `allowFrom` in config |
+| Bot doesn't respond (health-monitor: stopped) | Gateway didn't load WhatsApp session | `docker compose restart openclaw` |
+| QR code expired | Took too long to scan | Re-run `docker compose exec openclaw node dist/index.js channels login` |
+| WhatsApp disconnected | Phone offline >14 days | Re-link with `channels login` |
+| Oracle instance stopped | Idle reclamation | Upgrade to Pay-As-You-Go |
 
 ## File Structure
 
 ```
 whatsapp-agent/
-├── openclaw.json          # Main OpenClaw configuration
-├── docker-compose.yml     # Docker container setup
-├── .env.example           # Environment variable template
-├── setup-oracle.sh        # Oracle Cloud server setup script
+├── setup.sh               # One-shot setup script (run this)
+├── docker-compose.yml      # Container config (host dir mount, no named volume)
+├── openclaw.json           # Template config (copied to ~/.openclaw on setup)
+├── .env.example            # API key template
 ├── skills/
 │   └── russian-assistant/
-│       └── SKILL.md       # Russian assistant persona & instructions
-├── workspace/             # Agent workspace (file operations)
-└── DEPLOY.md              # This file
+│       └── SKILL.md        # Russian assistant persona
+├── workspace/              # Agent workspace
+└── DEPLOY.md               # This file
 ```
 
 ## Estimated Monthly Cost

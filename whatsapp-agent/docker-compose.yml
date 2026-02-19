@@ -10,12 +10,10 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       BRAVE_API_KEY: ${BRAVE_API_KEY}
     volumes:
-      # OpenClaw state (sessions, credentials, logs)
-      - openclaw-state:/home/node/.openclaw
-      # Our custom config
-      - ./openclaw.json:/home/node/.openclaw/openclaw.json:ro
-      # Our custom skill
-      - ./skills:/home/node/.openclaw/skills:ro
+      # Host directory for all OpenClaw state (sessions, credentials, logs).
+      # DO NOT use a named Docker volume here — it causes EBUSY errors when
+      # combined with bind mounts into subdirectories.
+      - ~/.openclaw:/home/node/.openclaw
       # Workspace for agent file operations
       - ./workspace:/home/node/.openclaw/workspace
     ports:
@@ -28,14 +26,3 @@ services:
       - "${OPENCLAW_GATEWAY_BIND:-lan}"
       - --port
       - "18789"
-    # Health check - restart if gateway stops responding
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:18789/health"]
-      interval: 60s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
-volumes:
-  openclaw-state:
-    driver: local
