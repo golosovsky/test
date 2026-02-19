@@ -65,8 +65,7 @@
       "sendReadReceipts": true,
       "dmPolicy": "allowlist",
       "allowFrom": [
-        "+GRANDFATHER_PHONE_NUMBER",
-        "+YOUR_PHONE_NUMBER"
+        "+972545993413"
       ],
       "groupPolicy": "disabled",
       "textChunkLimit": 4000,
