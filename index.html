@@ -264,29 +264,34 @@
     let selectedStopId = null;
     let refreshInterval = null;
 
-    // --- API layer: always use CORS proxy when on file:// ---
+    // --- API layer: multiple CORS proxy fallbacks ---
     const SEARCH_BASE = 'https://app.busnearby.co.il/stopSearch';
     const TIMES_BASE  = 'https://api.busnearby.co.il/directions/index/stops';
-    const PROXY       = 'https://corsproxy.io/?';
 
-    function needsProxy() {
-      return location.protocol === 'file:' || location.hostname === 'localhost';
-    }
+    const PROXIES = [
+      url => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+      url => 'https://corsproxy.io/?' + encodeURIComponent(url),
+      url => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url),
+    ];
 
     async function apiFetch(url) {
-      if (needsProxy()) {
-        const res = await fetch(PROXY + encodeURIComponent(url));
-        if (!res.ok) throw new Error(res.status);
-        return res.json();
-      }
-      // On HTTPS (e.g. GitHub Pages) try direct first
+      // Try direct first (works if API allows CORS)
       try {
         const res = await fetch(url);
-        if (res.ok) return res.json();
+        if (res.ok) return await res.json();
       } catch (_) {}
-      const res = await fetch(PROXY + encodeURIComponent(url));
-      if (!res.ok) throw new Error(res.status);
-      return res.json();
+      // Try each CORS proxy until one works
+      let lastErr;
+      for (const makeUrl of PROXIES) {
+        try {
+          const res = await fetch(makeUrl(url));
+          if (res.ok) {
+            const text = await res.text();
+            return JSON.parse(text);
+          }
+        } catch (e) { lastErr = e; }
+      }
+      throw lastErr || new Error('All proxies failed');
     }
 
     // --- LocalStorage for remembered stop ---
@@ -336,7 +341,7 @@
             <div class="stop-code">קוד תחנה: ${s.stop_code || s.stop_id}</div>
           </div>`).join('');
       } catch (e) {
-        listEl.innerHTML = '<div class="stop-option">שגיאה בחיפוש - בדוק חיבור אינטרנט</div>';
+        listEl.innerHTML = `<div class="stop-option">שגיאה בחיפוש<div class="stop-code">${esc(e.message)}</div></div>`;
       }
     }
 
@@ -391,7 +396,7 @@
         const t = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         setStatus('live', `עדכון אחרון: ${t}`);
       } catch (e) {
-        setStatus('error', 'שגיאת חיבור - בדוק אינטרנט');
+        setStatus('error', 'שגיאת חיבור: ' + e.message);
       }
     }
 
