@@ -135,6 +135,11 @@
     .train-num { color:var(--cyan); font-size:1.2rem; text-shadow:0 0 10px var(--cyan-dim); min-width:46px; text-align:center; }
     .train-dest { font-size:0.8rem; color:var(--muted); }
     .stops-info { font-size:0.6rem; color:var(--border); margin-top:2px; }
+    .stops-abbr {
+      font-size:0.55rem; color:var(--cyan); opacity:0.5; margin-top:3px;
+      letter-spacing:0.5px; direction:ltr; text-align:left;
+      word-break:break-word; line-height:1.4;
+    }
 
     /* Other lines */
     .other-lines { margin-top:16px; border-top:1px solid var(--border); padding-top:10px; }
@@ -398,6 +403,36 @@
       {id:680,he:'ירושלים נבון',en:'Jerusalem Navon'},{id:6700,he:'ירושלים מלחה',en:'Jerusalem Malha'},
     ];
 
+    // Station ID → 3-letter English abbreviation
+    const STATION_ABBR={
+      1600:'NHR',1500:'AKO',1840:'KRM',1820:'AHH',
+      1400:'KMZ',700:'KHY',1300:'HMF',1220:'MFC',
+      1260:'AFL',1280:'BSH',1250:'MGL',1240:'YKN',
+      2100:'HFC',2200:'HBG',2300:'HFK',2500:'ATL',
+      2800:'BNY',2820:'CSR',3100:'HDR',3300:'NTN',
+      3310:'NTS',3400:'BYH',3500:'HRZ',2940:'RNW',
+      2960:'RNS',8700:'KFS',8800:'RHA',9200:'HDS',
+      3600:'TAU',3700:'TAS',4600:'TAH',4900:'TAG',
+      4100:'BNB',4170:'PKA',4250:'PTS',
+      4640:'HLN',4660:'HLW',4680:'BYF',4690:'BYK',
+      4800:'KHB',5000:'LOD',5010:'RML',5150:'LGA',
+      8600:'BGA',300:'PMD',400:'MDN',
+      5200:'RHV',5300:'BYA',5410:'YVE',9000:'YVW',
+      9100:'RLZ',9800:'RMD',5800:'ASD',5900:'ASK',
+      9600:'SDR',9650:'NTV',9700:'OFK',
+      6150:'KML',6900:'MZB',7000:'KGT',8550:'LHV',
+      7300:'BSN',7320:'BSC',7500:'DMN',
+      6300:'BSM',6500:'JRZ',680:'JRN',6700:'JRM',
+    };
+
+    function stopsToAbbr(stopStations){
+      if(!stopStations||!stopStations.length)return '';
+      return stopStations.map(s=>{
+        const id=Number(s.stationId||s.StationNumber||s.stationNumber||0);
+        return STATION_ABBR[id]||'???';
+      }).join(' > ');
+    }
+
     // Major hubs for departure board queries
     const HUBS=[3700,680,2300,8600,7320,1600,5900];
 
@@ -463,6 +498,7 @@
               platform:train.platform||train.departurePlatform||'?',
               direct:travel.trains.length===1,
               stops:train.stopStations?.length||0,
+              stopStations:train.stopStations||[],
             });
           }
         }
@@ -487,6 +523,7 @@
         let cls='train',txt=String(t.diffMin),lbl='min';
         if(t.diffMin<=1){cls='now';txt='NOW';lbl=''}
         else if(t.diffMin<=5){cls='soon'}
+        const abbr=stopsToAbbr(t.stopStations);
         return`<div class="arrival-card train-card">
           <div class="arrival-left">
             <div class="train-num">#${esc(String(t.trainNo))}</div>
@@ -494,6 +531,7 @@
               <div class="train-dest">${esc(t.dest)}</div>
               <div class="stops-info">${t.direct?'[DIRECT]':'[CHANGE]'}</div>
               <div class="platform-tag">PLATFORM ${esc(String(t.platform))}</div>
+              ${abbr?`<div class="stops-abbr">[${abbr}]</div>`:''}
             </div>
           </div>
           <div class="arrival-right">
