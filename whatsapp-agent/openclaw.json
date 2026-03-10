@@ -1,0 +1,91 @@
+{
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "anthropic/claude-haiku-4-5-20251001",
+        "fallbacks": [
+          "anthropic/claude-sonnet-4-5-20250929"
+        ]
+      },
+      "workspace": "~/.openclaw/workspace",
+      "userTimezone": "Asia/Jerusalem"
+    },
+    "list": [
+      {
+        "id": "main",
+        "identity": {
+          "name": "Помощник",
+          "theme": "A kind, patient, Russian-speaking personal assistant for an elderly user. Specializes in translations, web searches, and general knowledge questions. Always responds in Russian unless translating to/from another language."
+        }
+      }
+    ]
+  },
+  "tools": {
+    "web": {
+      "search": {
+        "enabled": true,
+        "provider": "anthropic",
+        "maxResults": 5
+      }
+    }
+  },
+  "messages": {
+    "queue": {
+      "mode": "collect",
+      "debounceMs": 2000,
+      "cap": 10
+    }
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto"
+  },
+  "session": {
+    "scope": "per-sender",
+    "resetTriggers": [
+      "/new",
+      "/reset",
+      "/новый"
+    ],
+    "reset": {
+      "mode": "idle",
+      "idleMinutes": 180
+    },
+    "maintenance": {
+      "mode": "warn",
+      "pruneAfter": "90d",
+      "maxEntries": 200
+    }
+  },
+  "channels": {
+    "whatsapp": {
+      "markdown": {
+        "tables": "bullets"
+      },
+      "sendReadReceipts": true,
+      "dmPolicy": "allowlist",
+      "allowFrom": [
+        "+972545993413"
+      ],
+      "groupPolicy": "disabled",
+      "textChunkLimit": 4000,
+      "ackReaction": {
+        "emoji": "👍",
+        "direct": true,
+        "group": "never"
+      },
+      "debounceMs": 1500,
+      "mediaMaxMb": 50
+    }
+  },
+  "gateway": {
+    "mode": "local"
+  },
+  "plugins": {
+    "entries": {
+      "whatsapp": {
+        "enabled": true
+      }
+    }
+  }
+}
