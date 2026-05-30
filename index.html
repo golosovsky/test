@@ -1,561 +1,968 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#000000">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <title>TRANSIT // TRACKER</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Netanya Surf Conditions</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
     :root {
-      --green: #00ff41; --dim: #00ff4133; --green2: #00cc33;
-      --bg: #000a00; --card: #001a00; --border: #003300;
-      --red: #ff0040; --yellow: #ccff00; --muted: #337733;
-      --cyan: #00e5ff; --cyan-dim: #00e5ff33;
+      --ocean: #0077b6;
+      --sky: #90e0ef;
+      --foam: #caf0f8;
+      --sand: #f4e4c1;
+      --green: #2dc653;
+      --yellow: #f5c518;
+      --orange: #f4811f;
+      --red: #e63946;
+      --card-bg: rgba(255,255,255,0.92);
+      --text: #023e8a;
+      --muted: #5a7ea0;
+      --radius: 14px;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
+
     body {
-      font-family: 'Share Tech Mono', 'Courier New', monospace;
-      background: var(--bg); color: var(--green);
-      min-height: 100vh; min-height: 100dvh;
-      padding: 12px; -webkit-tap-highlight-color: transparent;
-      position: relative; overflow-x: hidden;
-    }
-    canvas#matrix { position: fixed; top:0; left:0; width:100%; height:100%; z-index:0; opacity:0.07; pointer-events:none; }
-    body::after {
-      content:''; position:fixed; top:0; left:0; width:100%; height:100%;
-      pointer-events:none; z-index:999;
-      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,0.015) 2px, rgba(0,255,65,0.015) 4px);
-    }
-    .container { max-width:480px; margin:0 auto; position:relative; z-index:1; }
-
-    /* Header */
-    header { text-align:center; padding:10px 0 6px; border-bottom:1px solid var(--border); }
-    .sys-tag { font-size:0.6rem; color:var(--muted); letter-spacing:2px; text-transform:uppercase; }
-    .header-title { font-size:1.6rem; color:var(--green); text-shadow:0 0 20px var(--green), 0 0 40px var(--dim); letter-spacing:4px; }
-
-    /* Tabs */
-    .tabs { display:flex; margin:10px 0 8px; gap:0; }
-    .tab {
-      flex:1; padding:10px; text-align:center; font-family:inherit; font-size:0.8rem;
-      background:transparent; color:var(--muted); border:1px solid var(--border);
-      cursor:pointer; text-transform:uppercase; letter-spacing:2px;
-      -webkit-tap-highlight-color:transparent; transition:all 0.15s;
-    }
-    .tab:first-child { border-left:none; }
-    .tab:last-child { border-right:none; }
-    .tab.active { color:var(--green); border-bottom-color:var(--green); background:var(--card); text-shadow:0 0 10px var(--dim); }
-    .tab.active.train-active { color:var(--cyan); border-bottom-color:var(--cyan); text-shadow:0 0 10px var(--cyan-dim); }
-    .tab:active { background:var(--card); }
-    .tab-panel { display:none; }
-    .tab-panel.active { display:block; }
-
-    /* Shared */
-    .search-row { display:flex; gap:6px; }
-    .search-row input, .search-row select {
-      flex:1; padding:10px 12px; border:1px solid var(--border); border-radius:0;
-      background:var(--card); color:var(--green); font-family:inherit; font-size:16px;
-      outline:none; direction:rtl; caret-color:var(--green);
-      -webkit-appearance:none; appearance:none;
-    }
-    .search-row input::placeholder { color:var(--muted); }
-    .search-row input:focus, .search-row select:focus { border-color:var(--green); box-shadow:0 0 8px var(--dim); }
-    .btn {
-      padding:10px 16px; background:transparent; color:var(--green); border:1px solid var(--green);
-      font-family:inherit; font-size:0.85rem; cursor:pointer; text-transform:uppercase;
-      letter-spacing:1px; -webkit-tap-highlight-color:transparent; transition:all 0.1s;
-    }
-    .btn:active { background:var(--green); color:var(--bg); }
-    .btn.cyan { color:var(--cyan); border-color:var(--cyan); }
-    .btn.cyan:active { background:var(--cyan); color:var(--bg); }
-
-    .stops-list { margin-top:6px; border:1px solid var(--border); overflow:hidden; }
-    .stop-option { padding:12px; cursor:pointer; border-bottom:1px solid var(--border); transition:background 0.1s; font-size:0.85rem; }
-    .stop-option:last-child { border-bottom:none; }
-    .stop-option:active { background:#002200; }
-    .stop-option.selected { background:#002200; border-right:2px solid var(--green); }
-    .stop-name { color:var(--green); }
-    .stop-code { font-size:0.7rem; color:var(--muted); margin-top:2px; }
-
-    .status-bar {
-      display:flex; justify-content:space-between; align-items:center;
-      padding:8px 0; font-size:0.7rem; color:var(--muted);
-      border-top:1px solid var(--border); border-bottom:1px solid var(--border); margin:8px 0;
-    }
-    .btn-sm {
-      padding:4px 12px; font-size:0.7rem; border:1px solid var(--border);
-      background:transparent; color:var(--muted); font-family:inherit; cursor:pointer; text-transform:uppercase;
-    }
-    .btn-sm:active { border-color:var(--green); color:var(--green); }
-    .status-dot { width:6px; height:6px; border-radius:50%; display:inline-block; margin-left:6px; }
-    .status-dot.live { background:var(--green); box-shadow:0 0 6px var(--green); animation:blink 2s infinite; }
-    .status-dot.error { background:var(--red); box-shadow:0 0 6px var(--red); }
-    .status-dot.loading { background:var(--yellow); animation:blink 0.5s infinite; }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
-
-    /* Arrival cards */
-    .arrivals { display:flex; flex-direction:column; gap:8px; }
-    .arrival-card {
-      background:var(--card); border:1px solid var(--border); padding:14px;
-      display:flex; align-items:center; justify-content:space-between;
-      position:relative; overflow:hidden;
-    }
-    .arrival-card::before { content:''; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--green); box-shadow:0 0 8px var(--green); }
-    .arrival-card.train-card::before { background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
-    .arrival-left { display:flex; align-items:center; gap:12px; }
-    .line-num { color:var(--green); font-size:1.4rem; text-shadow:0 0 10px var(--dim); min-width:46px; text-align:center; }
-    .arrival-dest { font-size:0.8rem; color:var(--muted); }
-    .arrival-rt { font-size:0.65rem; color:var(--border); margin-top:2px; }
-    .arrival-right { text-align:left; flex-shrink:0; }
-    .arrival-min { font-size:2rem; color:var(--green); text-shadow:0 0 15px var(--green), 0 0 30px var(--dim); line-height:1; }
-    .arrival-min.soon { color:var(--yellow); text-shadow:0 0 15px var(--yellow); }
-    .arrival-min.now { color:var(--red); text-shadow:0 0 15px var(--red); font-size:1.1rem; }
-    .arrival-min.train { color:var(--cyan); text-shadow:0 0 15px var(--cyan), 0 0 30px var(--cyan-dim); }
-    .arrival-label { font-size:0.65rem; color:var(--muted); }
-    .arrival-time { font-size:0.7rem; color:var(--border); margin-top:2px; }
-    .empty-state { text-align:center; padding:30px 20px; color:var(--muted); font-size:0.85rem; }
-    .empty-state .icon { font-size:1.5rem; margin-bottom:8px; opacity:0.5; }
-
-    /* Train-specific */
-    .train-select-wrap { margin:10px 0; }
-    .train-select-wrap select {
-      width:100%; padding:12px; border:1px solid var(--border); background:var(--card);
-      color:var(--cyan); font-family:inherit; font-size:16px; -webkit-appearance:none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2300e5ff'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
-      background-repeat:no-repeat; background-position:12px center;
-    }
-    .train-select-wrap select:focus { border-color:var(--cyan); box-shadow:0 0 8px var(--cyan-dim); }
-    .platform-tag {
-      display:inline-block; padding:2px 6px; border:1px solid var(--cyan);
-      color:var(--cyan); font-size:0.6rem; margin-top:3px;
-    }
-    .train-num { color:var(--cyan); font-size:1.2rem; text-shadow:0 0 10px var(--cyan-dim); min-width:46px; text-align:center; }
-    .train-dest { font-size:0.8rem; color:var(--muted); }
-    .stops-info { font-size:0.6rem; color:var(--border); margin-top:2px; }
-    .stops-abbr {
-      font-size:0.55rem; color:var(--cyan); opacity:0.5; margin-top:3px;
-      letter-spacing:0.5px; direction:ltr; text-align:left;
-      word-break:break-word; line-height:1.4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(160deg, #0096c7 0%, #48cae4 40%, #90e0ef 80%, var(--sand) 100%);
+      min-height: 100vh;
+      color: var(--text);
+      padding: 16px;
     }
 
-    /* Other lines */
-    .other-lines { margin-top:16px; border-top:1px solid var(--border); padding-top:10px; }
-    .other-lines h3 { font-size:0.7rem; color:var(--muted); margin-bottom:6px; letter-spacing:1px; text-transform:uppercase; font-weight:400; }
-    .other-card { border:1px solid #001a00; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; font-size:0.8rem; }
-    .other-card .line-num { font-size:1rem; color:var(--muted); min-width:36px; text-shadow:none; }
-    .other-card .arrival-min { font-size:1rem; color:var(--muted); text-shadow:none; }
+    /* HEADER */
+    header {
+      text-align: center;
+      padding: 20px 0 12px;
+    }
+    header h1 {
+      font-size: 1.7rem;
+      font-weight: 800;
+      color: #fff;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      letter-spacing: -0.5px;
+    }
+    header p.subtitle {
+      color: rgba(255,255,255,0.85);
+      font-size: 0.85rem;
+      margin-top: 4px;
+    }
+    #update-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    #last-updated {
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.8);
+    }
+    #refresh-btn {
+      background: rgba(255,255,255,0.25);
+      border: 1px solid rgba(255,255,255,0.5);
+      color: #fff;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #refresh-btn:hover { background: rgba(255,255,255,0.4); }
+    #refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    .saved-stop { margin-top:6px; padding:8px 12px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; cursor:pointer; font-size:0.8rem; }
-    .saved-stop:active { border-color:var(--green); }
-    .saved-label { font-size:0.65rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
-    .saved-name { color:var(--green2); }
-    .saved-clear { color:var(--muted); font-size:0.7rem; padding:4px 8px; }
+    /* BEST BEACH BANNER */
+    #best-banner {
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.4);
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      margin: 14px auto;
+      max-width: 640px;
+      text-align: center;
+      display: none;
+    }
+    #best-banner h2 {
+      color: #fff;
+      font-size: 0.75rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      font-weight: 600;
+      opacity: 0.85;
+      margin-bottom: 4px;
+    }
+    #best-beach-name {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #fff;
+    }
+    #best-beach-sub {
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.85);
+      margin-top: 2px;
+    }
 
-    .debug { margin-top:16px; border:1px solid var(--border); padding:8px; font-size:0.6rem; color:var(--muted); max-height:200px; overflow-y:auto; display:none; word-break:break-all; }
-    .debug.show { display:block; }
-    .debug .ok { color:var(--green); }
-    .debug .fail { color:var(--red); }
-    .footer { text-align:center; margin-top:16px; padding:8px; font-size:0.6rem; color:var(--border); letter-spacing:1px; }
+    /* ACTIVITY FILTER */
+    #activity-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin: 12px auto;
+      max-width: 640px;
+    }
+    .activity-tab {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.35);
+      color: rgba(255,255,255,0.9);
+      padding: 7px 18px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .activity-tab.active {
+      background: #fff;
+      color: var(--ocean);
+      border-color: #fff;
+    }
+
+    /* LOADING / ERROR */
+    #status-msg {
+      text-align: center;
+      color: rgba(255,255,255,0.9);
+      padding: 40px;
+      font-size: 1rem;
+    }
+
+    /* CARDS GRID */
+    #cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 14px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* BEACH CARD */
+    .beach-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(8px);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,80,160,0.15);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .beach-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,80,160,0.22); }
+    .beach-card.best-card { border: 2px solid #ffd700; }
+
+    .card-header {
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+    .beach-name {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--ocean);
+    }
+    .beach-desc {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .best-badge {
+      display: none;
+      background: #ffd700;
+      color: #7a5c00;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+      white-space: nowrap;
+      margin-left: 8px;
+    }
+    .beach-card.best-card .best-badge { display: inline-block; }
+
+    /* SCORES ROW */
+    .scores-row {
+      display: flex;
+      justify-content: space-around;
+      padding: 12px 8px;
+    }
+    .score-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      flex: 1;
+    }
+    .score-ring {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+      border: 3px solid;
+      position: relative;
+    }
+    .score-ring .score-num { line-height: 1; }
+    .score-ring .score-max { font-size: 0.55rem; font-weight: 500; opacity: 0.7; line-height: 1; }
+    .score-label { font-size: 0.7rem; font-weight: 600; color: var(--muted); }
+    .score-emoji { font-size: 1.05rem; margin-bottom: 2px; }
+
+    /* Score colors */
+    .s-great  { color: var(--green);  border-color: var(--green);  background: #edfaf1; }
+    .s-good   { color: #5aab2a;        border-color: #5aab2a;        background: #f3fbed; }
+    .s-fair   { color: var(--yellow); border-color: var(--yellow); background: #fefae0; }
+    .s-poor   { color: var(--orange); border-color: var(--orange); background: #fff3e6; }
+    .s-bad    { color: var(--red);    border-color: var(--red);    background: #fdf0f1; }
+
+    /* QUICK STATS */
+    .quick-stats {
+      display: flex;
+      justify-content: space-around;
+      padding: 6px 12px 10px;
+      background: rgba(0,119,182,0.04);
+      border-top: 1px solid rgba(0,0,0,0.05);
+    }
+    .quick-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .qs-val { font-size: 0.92rem; font-weight: 700; color: var(--text); }
+    .qs-key { font-size: 0.65rem; color: var(--muted); font-weight: 500; }
+
+    /* DETAILS BUTTON */
+    .details-btn {
+      width: 100%;
+      background: none;
+      border: none;
+      border-top: 1px solid rgba(0,0,0,0.07);
+      padding: 9px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--ocean);
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: background 0.15s;
+    }
+    .details-btn:hover { background: rgba(0,119,182,0.05); }
+
+    /* MODAL */
+    #modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,20,60,0.6);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    #modal-overlay.open { display: flex; }
+    #modal {
+      background: #fff;
+      border-radius: 20px 20px 0 0;
+      width: 100%;
+      max-width: 560px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 0 0 40px;
+      animation: slideUp 0.28s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-handle {
+      width: 36px; height: 4px;
+      background: #ddd;
+      border-radius: 2px;
+      margin: 12px auto 0;
+    }
+    .modal-header {
+      padding: 14px 20px 12px;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-title { font-size: 1.15rem; font-weight: 800; color: var(--ocean); }
+    #modal-close {
+      background: #f0f0f0;
+      border: none;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .modal-section {
+      padding: 14px 20px 0;
+    }
+    .modal-section h3 {
+      font-size: 0.68rem;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .detail-cell {
+      background: #f7faff;
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    .detail-cell .dc-val { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+    .detail-cell .dc-key { font-size: 0.7rem; color: var(--muted); font-weight: 500; margin-top: 1px; }
+
+    /* FORECAST TABLE */
+    .forecast-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      margin-top: 8px;
+    }
+    .forecast-table th {
+      text-align: center;
+      padding: 6px 4px;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.68rem;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      border-bottom: 1px solid #eee;
+    }
+    .forecast-table td {
+      text-align: center;
+      padding: 7px 4px;
+      border-bottom: 1px solid #f5f5f5;
+      font-weight: 500;
+    }
+    .forecast-table tr:last-child td { border-bottom: none; }
+    .forecast-table .score-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 0.8rem;
+    }
+
+    /* ACTIVITY SCORES in MODAL */
+    .modal-scores {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      padding: 4px 0 8px;
+    }
+    .modal-score-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      background: #f7faff;
+      border-radius: 12px;
+      padding: 10px 18px;
+      flex: 1;
+    }
+    .modal-score-item .act-icon { font-size: 1.4rem; }
+    .modal-score-item .act-score { font-size: 1.3rem; font-weight: 800; }
+    .modal-score-item .act-label { font-size: 0.68rem; color: var(--muted); font-weight: 600; }
+
+    /* Condition label */
+    .cond-label {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .cond-great  { background: #edfaf1; color: var(--green); }
+    .cond-good   { background: #f3fbed; color: #5aab2a; }
+    .cond-fair   { background: #fefae0; color: #c49a00; }
+    .cond-poor   { background: #fff3e6; color: var(--orange); }
+    .cond-bad    { background: #fdf0f1; color: var(--red); }
+
+    @media (max-width: 380px) {
+      #cards-grid { grid-template-columns: 1fr; }
+      .score-ring { width: 50px; height: 50px; font-size: 1rem; }
+    }
   </style>
 </head>
 <body>
-  <canvas id="matrix"></canvas>
-  <div class="container">
-    <header>
-      <div class="sys-tag">// transit_tracker v3.0</div>
-      <div class="header-title">TRANSIT</div>
-    </header>
 
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('bus')">BUS 605</button>
-      <button class="tab" onclick="switchTab('train')">TRAIN</button>
-    </div>
-
-    <!-- BUS TAB -->
-    <div id="busPanel" class="tab-panel active">
-      <div style="text-align:center;font-size:0.75rem;color:var(--muted);margin-bottom:8px">&#9660; דרום &mdash; <b style="color:var(--green2)">אודים</b></div>
-      <div class="search-section">
-        <div class="search-row">
-          <input type="text" id="searchInput" inputmode="search" placeholder="[ חפש תחנה ]" value="אודים">
-          <button class="btn" onclick="searchStops()">SCAN</button>
-        </div>
-        <div id="savedStop" style="display:none" class="saved-stop"></div>
-        <div id="stopsList" class="stops-list" style="display:none"></div>
-      </div>
-      <div class="status-bar">
-        <span id="busStatus">SYS_INIT...</span>
-        <button class="btn-sm" onclick="loadArrivals()">REFRESH</button>
-      </div>
-      <div id="arrivals" class="arrivals">
-        <div class="empty-state"><div class="icon">&gt;_</div><div>AWAITING_TARGET_STATION...</div></div>
-      </div>
-      <div id="otherLines" class="other-lines" style="display:none">
-        <h3>// other_routes</h3>
-        <div id="otherLinesContent"></div>
-      </div>
-    </div>
-
-    <!-- TRAIN TAB -->
-    <div id="trainPanel" class="tab-panel">
-      <div class="train-select-wrap">
-        <select id="trainStation" onchange="onTrainStationChange()">
-          <option value="">[ SELECT STATION ]</option>
-        </select>
-      </div>
-      <div class="status-bar">
-        <span id="trainStatus">SELECT_STATION...</span>
-        <button class="btn-sm" onclick="loadTrains()">REFRESH</button>
-      </div>
-      <div id="trainArrivals" class="arrivals">
-        <div class="empty-state"><div class="icon">&gt;_</div><div>SELECT_STATION_TO_SCAN...</div></div>
-      </div>
-    </div>
-
-    <div id="debugConsole" class="debug"></div>
-    <div class="footer">auto_refresh: 30s &bull; src: busnearby + israel_rail</div>
+<header>
+  <h1>🏄 Netanya Surf</h1>
+  <p class="subtitle">Real-time beach conditions · Mediterranean</p>
+  <div id="update-bar">
+    <span id="last-updated">Loading…</span>
+    <button id="refresh-btn" onclick="loadAll()">↻ Refresh</button>
   </div>
+</header>
 
-  <script>
-    // --- Matrix rain ---
-    (function(){
-      const c=document.getElementById('matrix'),ctx=c.getContext('2d');
-      let cols,drops;
-      function resize(){c.width=innerWidth;c.height=innerHeight;cols=Math.floor(c.width/14);drops=Array(cols).fill(1)}
-      resize(); addEventListener('resize',resize);
-      const ch='אבגדהוזחטיכלמנסעפצקרשת0123456789';
-      setInterval(()=>{
-        ctx.fillStyle='rgba(0,10,0,0.05)';ctx.fillRect(0,0,c.width,c.height);
-        ctx.fillStyle='#00ff41';ctx.font='14px monospace';
-        for(let i=0;i<cols;i++){ctx.fillText(ch[Math.random()*ch.length|0],i*14,drops[i]*14);if(drops[i]*14>c.height&&Math.random()>0.975)drops[i]=0;drops[i]++}
-      },60);
-    })();
+<div id="best-banner">
+  <h2>Best right now</h2>
+  <div id="best-beach-name">—</div>
+  <div id="best-beach-sub">—</div>
+</div>
 
-    // --- State ---
-    let selectedStopId=null, refreshInterval=null, trainInterval=null;
-    const params=new URLSearchParams(location.search), DEBUG=params.has('debug');
+<div id="activity-tabs">
+  <button class="activity-tab active" onclick="setTab('surf',this)">🏄 Surf</button>
+  <button class="activity-tab" onclick="setTab('sup',this)">🏄‍♂️ SUP</button>
+  <button class="activity-tab" onclick="setTab('kayak',this)">🚣 Kayak</button>
+  <button class="activity-tab" onclick="setTab('all',this)">All</button>
+</div>
 
-    function dbg(msg,ok){
-      if(!DEBUG)return;
-      const el=document.getElementById('debugConsole');el.classList.add('show');
-      el.innerHTML+=`<div class="${ok===true?'ok':ok===false?'fail':''}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
-      el.scrollTop=el.scrollHeight;
-    }
+<div id="status-msg">Fetching ocean data…</div>
+<div id="cards-grid" style="display:none"></div>
 
-    // --- CORS proxy fetch ---
-    const PROXIES=[
-      {name:'allorigins',fn:u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u)},
-      {name:'corsproxy',fn:u=>'https://corsproxy.io/?'+encodeURIComponent(u)},
-      {name:'codetabs',fn:u=>'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u)},
-    ];
+<!-- MODAL -->
+<div id="modal-overlay" onclick="closeModal(event)">
+  <div id="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="modal-beach-name">—</div>
+      <button id="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
 
-    async function apiFetch(url, headers){
-      dbg('TRY direct: '+url.substring(0,60)+'...');
-      try{
-        const r=await fetch(url,headers?{headers}:undefined);
-        if(r.ok){dbg('DIRECT ok',true);return r.json()}
-        dbg('DIRECT http '+r.status,false);
-      }catch(e){dbg('DIRECT fail: '+e.message,false)}
-      for(const p of PROXIES){
-        dbg('TRY '+p.name+'...');
-        try{
-          const r=await fetch(p.fn(url));
-          if(r.ok){const t=await r.text();const d=JSON.parse(t);dbg(p.name+' ok ('+t.length+'b)',true);return d}
-          dbg(p.name+' http '+r.status,false);
-        }catch(e){dbg(p.name+' fail: '+e.message,false)}
-      }
-      throw new Error('ALL_PROXIES_FAILED');
-    }
+<script>
+// ── Beach definitions ──────────────────────────────────────────────
+const BEACHES = [
+  { id:'poleg',   name:'Poleg',   lat:32.3040, lon:34.8560, desc:'Main surf beach · consistent break', surfBonus:1.0 },
+  { id:'neurim',  name:'Neurim',  lat:32.3950, lon:34.8510, desc:'North Netanya · surfing center',      surfBonus:0.5 },
+  { id:'argaman', name:'Argaman', lat:32.3380, lon:34.8450, desc:'Central · narrow, peaceful',          surfBonus:0   },
+  { id:'sironit', name:'Sironit', lat:32.3355, lon:34.8465, desc:'City beach · lifeguards · families',  surfBonus:-0.5},
+  { id:'herzl',   name:'Herzl',   lat:32.3320, lon:34.8475, desc:'Water sports · lively',              surfBonus:0   },
+  { id:'bluebay', name:'Blue Bay',lat:32.3500, lon:34.8430, desc:'Northernmost Netanya beach',          surfBonus:0   },
+];
 
-    function esc(s){return s?s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])):''}
+// ── State ──────────────────────────────────────────────────────────
+let beachData = {};   // id → { marine, wind, scores }
+let activeTab = 'surf';
+let lastLoaded = null;
 
-    // ============================================================
-    //  TAB SWITCHING
-    // ============================================================
-    let activeTab='bus';
-    function switchTab(tab){
-      activeTab=tab;
-      document.querySelectorAll('.tab').forEach((t,i)=>{
-        t.classList.toggle('active',i===(tab==='bus'?0:1));
-        t.classList.toggle('train-active',tab==='train'&&i===1);
-      });
-      document.getElementById('busPanel').classList.toggle('active',tab==='bus');
-      document.getElementById('trainPanel').classList.toggle('active',tab==='train');
-    }
+// ── Open-Meteo URLs ────────────────────────────────────────────────
+function marineUrl(lat, lon) {
+  const vars = 'wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,swell_wave_peak_period,wind_wave_height,wind_wave_period';
+  return `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=${vars}&timezone=auto&forecast_days=3`;
+}
 
-    // ============================================================
-    //  BUS 605
-    // ============================================================
-    const SEARCH_BASE='https://app.busnearby.co.il/stopSearch';
-    const TIMES_BASE='https://api.busnearby.co.il/directions/index/stops';
+function weatherUrl(lat, lon) {
+  const vars = 'wind_speed_10m,wind_direction_10m,wind_gusts_10m,temperature_2m';
+  return `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=${vars}&current=${vars}&timezone=auto`;
+}
 
-    function saveStop(id,name){try{localStorage.setItem('bus605_stop',JSON.stringify({id,name}))}catch(_){}}
-    function loadSaved(){try{return JSON.parse(localStorage.getItem('bus605_stop'))}catch(_){return null}}
-    function clearSaved(){
-      try{localStorage.removeItem('bus605_stop')}catch(_){}
-      selectedStopId=null;
-      document.getElementById('savedStop').style.display='none';
-      document.getElementById('arrivals').innerHTML='<div class="empty-state"><div class="icon">&gt;_</div><div>AWAITING_TARGET_STATION...</div></div>';
-      document.getElementById('otherLines').style.display='none';
-      if(refreshInterval)clearInterval(refreshInterval);
-      setBusStatus('live','');
-    }
-    function showSaved(name){
-      const el=document.getElementById('savedStop');el.style.display='flex';
-      el.innerHTML=`<div><div class="saved-label">active_station</div><div class="saved-name">${esc(name)}</div></div><div class="saved-clear" onclick="event.stopPropagation();clearSaved()">[ X ]</div>`;
-    }
-    function setBusStatus(t,txt){document.getElementById('busStatus').innerHTML=`<span class="status-dot ${t}"></span> ${txt}`}
+// ── Fetch helpers ──────────────────────────────────────────────────
+async function fetchJSON(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
 
-    async function searchStops(){
-      const q=document.getElementById('searchInput').value.trim();if(!q)return;
-      const el=document.getElementById('stopsList');el.style.display='block';el.innerHTML='<div class="stop-option">SCANNING...</div>';
-      try{
-        const stops=await apiFetch(`${SEARCH_BASE}?query=${encodeURIComponent(q)}&locale=he`);
-        if(!stops?.length){el.innerHTML='<div class="stop-option">NO_RESULTS</div>';return}
-        el.innerHTML=stops.map(s=>`<div class="stop-option" onclick="pickStop('${s.stop_id}','${esc(s.stop_name)}',this)"><div class="stop-name">${esc(s.stop_name)}</div><div class="stop-code">ID: ${s.stop_code||s.stop_id}</div></div>`).join('');
-      }catch(e){el.innerHTML=`<div class="stop-option" style="color:var(--red)">ERR: ${esc(e.message)}<div class="stop-code">add ?debug to URL for trace</div></div>`}
-    }
+// ── Find current hour index ────────────────────────────────────────
+function currentHourIndex(times) {
+  const now = new Date();
+  const prefix = now.toISOString().slice(0, 13); // "2024-01-01T12"
+  // API times are local, so match on HH only by comparing local hour
+  const localHour = now.getHours();
+  // Find closest past time
+  let best = 0;
+  for (let i = 0; i < times.length; i++) {
+    const t = new Date(times[i]);
+    if (t <= now) best = i;
+    else break;
+  }
+  return best;
+}
 
-    function pickStop(id,name,el){
-      selectedStopId=id;saveStop(id,name);showSaved(name);
-      document.querySelectorAll('.stop-option').forEach(e=>e.classList.remove('selected'));
-      if(el)el.classList.add('selected');
-      setTimeout(()=>document.getElementById('stopsList').style.display='none',200);
-      loadArrivals();if(refreshInterval)clearInterval(refreshInterval);refreshInterval=setInterval(loadArrivals,30000);
-    }
+// ── Wind quality for Netanya (coast faces west, offshore = from east ~90°) ──
+function windQuality(windDir, windSpeed) {
+  // Angular difference from pure offshore (90° = from east)
+  let diff = Math.abs(windDir - 90);
+  if (diff > 180) diff = 360 - diff;
+  // 0 = pure offshore, 180 = pure onshore
+  const isOffshore = diff < 70;
+  const isOnshore  = diff > 110;
 
-    async function loadArrivals(){
-      if(!selectedStopId)return;setBusStatus('loading','FETCHING...');
-      try{
-        const now=Date.now()/1000|0;
-        const data=await apiFetch(`${TIMES_BASE}/1:${selectedStopId}/stoptimes?numberOfDepartures=3&timeRange=7200&startTime=${now}&locale=he`);
-        if(!data||data.error){setBusStatus('error','DATA_ERROR');return}
-        const buses=[];
-        for(const e of data){if(!e.times?.length)continue;for(const t of e.times){const ts=t.serviceDay+(t.realtimeArrival||t.scheduledArrival);if(ts-now<-60)continue;buses.push({line:t.routeShortName||'?',dest:t.tripHeadsign||'',min:Math.max(0,Math.round((ts-now)/60)),ts,rt:!!t.realtime})}}
-        buses.sort((a,b)=>a.ts-b.ts);
-        render605(buses.filter(b=>b.line==='605'));renderOther(buses.filter(b=>b.line!=='605'));
-        setBusStatus('live','LIVE // '+new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
-      }catch(e){setBusStatus('error','ERR: '+e.message)}
-    }
+  const kmh = windSpeed; // API returns km/h
 
-    function render605(buses){
-      const el=document.getElementById('arrivals');
-      if(!buses.length){el.innerHTML='<div class="empty-state"><div class="icon">&gt;_</div><div>NO_605_INCOMING</div><div style="margin-top:6px;font-size:0.7rem;color:var(--border)">verify station (southbound)</div></div>';return}
-      el.innerHTML=buses.map(b=>{
-        const time=new Date(b.ts*1000).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
-        let cls='',txt=String(b.min),lbl='min';
-        if(b.min<=1){cls='now';txt='NOW';lbl=''}else if(b.min<=5)cls='soon';
-        return`<div class="arrival-card"><div class="arrival-left"><div class="line-num">605</div><div><div class="arrival-dest">${esc(b.dest)}</div><div class="arrival-rt">${b.rt?'[REALTIME]':'[SCHEDULE]'}</div></div></div><div class="arrival-right"><div class="arrival-min ${cls}">${txt}</div><div class="arrival-label">${lbl}</div><div class="arrival-time">${time}</div></div></div>`
-      }).join('');
-    }
+  if (kmh < 5)  return { label: 'Glassy', bonus: 3, type: 'offshore', icon: '🪟' };
+  if (isOffshore) {
+    if (kmh < 20) return { label: 'Offshore', bonus: 2, type: 'offshore', icon: '✅' };
+    if (kmh < 35) return { label: 'Offshore (strong)', bonus: 1, type: 'offshore', icon: '💨' };
+    return { label: 'Very strong offshore', bonus: 0, type: 'offshore', icon: '💨' };
+  }
+  if (!isOnshore) { // cross-shore
+    if (kmh < 20) return { label: 'Cross-shore', bonus: 1, type: 'cross', icon: '↔️' };
+    return { label: 'Cross-shore (strong)', bonus: 0, type: 'cross', icon: '↔️' };
+  }
+  // Onshore
+  if (kmh < 10) return { label: 'Light onshore', bonus: 0, type: 'onshore', icon: '⚠️' };
+  if (kmh < 20) return { label: 'Onshore', bonus: -1, type: 'onshore', icon: '❌' };
+  if (kmh < 35) return { label: 'Strong onshore', bonus: -2, type: 'onshore', icon: '❌' };
+  return { label: 'Very strong onshore', bonus: -3, type: 'onshore', icon: '❌' };
+}
 
-    function renderOther(buses){
-      const sec=document.getElementById('otherLines'),el=document.getElementById('otherLinesContent');
-      if(!buses.length){sec.style.display='none';return}
-      const seen=new Set(),uniq=buses.filter(b=>{if(seen.has(b.line))return false;seen.add(b.line);return true}).slice(0,8);
-      sec.style.display='block';
-      el.innerHTML=uniq.map(b=>`<div class="other-card"><div class="arrival-left"><div class="line-num">${esc(b.line)}</div><div class="arrival-dest" style="margin-right:8px">${esc(b.dest)}</div></div><div class="arrival-right"><div class="arrival-min">${b.min<=1?'NOW':b.min}</div><div class="arrival-label">${b.min>1?'min':''}</div></div></div>`).join('');
-    }
+// ── Scoring algorithms ─────────────────────────────────────────────
+function scoreColor(s) {
+  if (s >= 8) return 'great';
+  if (s >= 6) return 'good';
+  if (s >= 4) return 'fair';
+  if (s >= 2) return 'poor';
+  return 'bad';
+}
 
-    // ============================================================
-    //  TRAIN
-    // ============================================================
-    const TRAIN_API='https://israelrail.azurefd.net/rjpa-prod/api/v1/timetable/searchTrain';
-    const TRAIN_KEY='5e64d66cf03f4547bcac5de2de06b566';
+function condLabel(s) {
+  if (s >= 8) return ['Great', 'great'];
+  if (s >= 6) return ['Good', 'good'];
+  if (s >= 4) return ['Fair', 'fair'];
+  if (s >= 2) return ['Poor', 'poor'];
+  return ['Flat/Blown', 'bad'];
+}
 
-    const STATIONS=[
-      {id:1600,he:'נהריה',en:'Nahariya'},{id:1500,he:'עכו',en:'Ako'},
-      {id:1840,he:'כרמיאל',en:'Karmiel'},{id:1820,he:'אחיהוד',en:'Ahihud'},
-      {id:1400,he:'קריית מוצקין',en:'Kiryat Motzkin'},{id:700,he:'קריית חיים',en:'Kiryat Hayim'},
-      {id:1300,he:'חוצות המפרץ',en:'Hutsot HaMifrats'},{id:1220,he:'המפרץ מרכזית',en:'HaMifrats Central'},
-      {id:1260,he:'עפולה',en:'Afula'},{id:1280,he:'בית שאן',en:'Beit Shean'},
-      {id:1250,he:'מגדל העמק',en:'Migdal HaEmek'},{id:1240,he:'יקנעם',en:'Yokneam'},
-      {id:2100,he:'חיפה מרכז',en:'Haifa Center'},{id:2200,he:'חיפה בת גלים',en:'Haifa Bat Galim'},
-      {id:2300,he:'חיפה חוף הכרמל',en:'Hof HaKarmel'},{id:2500,he:'עתלית',en:'Atlit'},
-      {id:2800,he:'בנימינה',en:'Binyamina'},{id:2820,he:'קיסריה פרדס חנה',en:'Caesarea'},
-      {id:3100,he:'חדרה מערב',en:'Hadera West'},{id:3300,he:'נתניה',en:'Netanya'},
-      {id:3310,he:'נתניה ספיר',en:'Netanya Sapir'},{id:3400,he:'בית יהושע',en:'Bet Yehoshua'},
-      {id:3500,he:'הרצליה',en:'Hertsliya'},{id:2940,he:"רעננה מערב",en:"Ra'anana West"},
-      {id:2960,he:"רעננה דרום",en:"Ra'anana South"},{id:8700,he:'כפר סבא נורדאו',en:'Kfar Sava'},
-      {id:8800,he:'ראש העין צפון',en:"Rosh Ha'Ayin"},{id:9200,he:'הוד השרון',en:'Hod HaSharon'},
-      {id:3600,he:'ת"א אוניברסיטה',en:'TA University'},{id:3700,he:'ת"א סבידור מרכז',en:'TA Savidor'},
-      {id:4600,he:'ת"א השלום',en:'TA HaShalom'},{id:4900,he:'ת"א ההגנה',en:'TA HaHagana'},
-      {id:4100,he:'בני ברק',en:'Bnei Brak'},{id:4170,he:'פ"ת קריית אריה',en:'PT Kiryat Arye'},
-      {id:4250,he:'פ"ת סגולה',en:'PT Segula'},
-      {id:4640,he:'חולון',en:'Holon'},{id:4660,he:'חולון וולפסון',en:'Holon Wolfson'},
-      {id:4680,he:'בת ים יוספטל',en:'Bat Yam Yoseftal'},{id:4690,he:'בת ים קוממיות',en:'Bat Yam Komemiyut'},
-      {id:4800,he:'כפר חב"ד',en:'Kfar Habad'},{id:5000,he:'לוד',en:'Lod'},
-      {id:5010,he:'רמלה',en:'Ramla'},{id:5150,he:'לוד גני אביב',en:'Lod Gane Aviv'},
-      {id:8600,he:'נתב"ג',en:'Ben Gurion Airport'},
-      {id:300,he:"פאתי מודיעין",en:"Pa'ate Modi'in"},{id:400,he:'מודיעין מרכז',en:'Modiin Center'},
-      {id:5200,he:'רחובות',en:'Rehovot'},{id:5300,he:'באר יעקב',en:"Be'er Ya'akov"},
-      {id:5410,he:'יבנה מזרח',en:'Yavne East'},{id:9000,he:'יבנה מערב',en:'Yavne West'},
-      {id:9100,he:'ראשל"צ הראשונים',en:'Rishon LeZion'},{id:9800,he:'ראשל"צ משה דיין',en:'Rishon M.Dayan'},
-      {id:5800,he:'אשדוד',en:'Ashdod'},{id:5900,he:'אשקלון',en:'Ashkelon'},
-      {id:9600,he:'שדרות',en:'Sderot'},{id:9650,he:'נתיבות',en:'Netivot'},{id:9700,he:'אופקים',en:'Ofakim'},
-      {id:6150,he:'קריית מלאכי',en:'Kiryat Malakhi'},{id:6900,he:'מזכרת בתיה',en:'Mazkeret Batya'},
-      {id:7000,he:'קריית גת',en:'Kiryat Gat'},{id:8550,he:'להבים רהט',en:'Lehavim'},
-      {id:7300,he:'ב"ש צפון',en:"Be'er Sheva North"},{id:7320,he:'ב"ש מרכז',en:"Be'er Sheva Center"},
-      {id:7500,he:'דימונה',en:'Dimona'},
-      {id:6300,he:'בית שמש',en:'Bet Shemesh'},{id:6500,he:'ירושלים גן החיות',en:'Jerusalem Zoo'},
-      {id:680,he:'ירושלים נבון',en:'Jerusalem Navon'},{id:6700,he:'ירושלים מלחה',en:'Jerusalem Malha'},
-    ];
+function calcSurfScore(waveH, swellPeriod, windSpeed, windDir, bonus) {
+  // Height: 0–4 pts
+  let hPts = 0;
+  if      (waveH >= 2.0) hPts = 4.0;
+  else if (waveH >= 1.5) hPts = 3.5;
+  else if (waveH >= 1.0) hPts = 3.0;
+  else if (waveH >= 0.7) hPts = 2.5;
+  else if (waveH >= 0.5) hPts = 2.0;
+  else if (waveH >= 0.3) hPts = 1.0;
+  // else 0
 
-    // Station ID → 3-letter English abbreviation
-    const STATION_ABBR={
-      1600:'NHR',1500:'AKO',1840:'KRM',1820:'AHH',
-      1400:'KMZ',700:'KHY',1300:'HMF',1220:'MFC',
-      1260:'AFL',1280:'BSH',1250:'MGL',1240:'YKN',
-      2100:'HFC',2200:'HBG',2300:'HFK',2500:'ATL',
-      2800:'BNY',2820:'CSR',3100:'HDR',3300:'NTN',
-      3310:'NTS',3400:'BYH',3500:'HRZ',2940:'RNW',
-      2960:'RNS',8700:'KFS',8800:'RHA',9200:'HDS',
-      3600:'TAU',3700:'TAS',4600:'TAH',4900:'TAG',
-      4100:'BNB',4170:'PKA',4250:'PTS',
-      4640:'HLN',4660:'HLW',4680:'BYF',4690:'BYK',
-      4800:'KHB',5000:'LOD',5010:'RML',5150:'LGA',
-      8600:'BGA',300:'PMD',400:'MDN',
-      5200:'RHV',5300:'BYA',5410:'YVE',9000:'YVW',
-      9100:'RLZ',9800:'RMD',5800:'ASD',5900:'ASK',
-      9600:'SDR',9650:'NTV',9700:'OFK',
-      6150:'KML',6900:'MZB',7000:'KGT',8550:'LHV',
-      7300:'BSN',7320:'BSC',7500:'DMN',
-      6300:'BSM',6500:'JRZ',680:'JRN',6700:'JRM',
-    };
+  // Swell period: 0–3 pts
+  let pPts = 0;
+  if      (swellPeriod >= 14) pPts = 3.0;
+  else if (swellPeriod >= 12) pPts = 2.5;
+  else if (swellPeriod >= 10) pPts = 2.0;
+  else if (swellPeriod >= 8)  pPts = 1.5;
+  else if (swellPeriod >= 6)  pPts = 1.0;
+  else if (swellPeriod >= 4)  pPts = 0.5;
 
-    function stopsToAbbr(stopStations){
-      if(!stopStations||!stopStations.length)return '';
-      return stopStations.map(s=>{
-        const id=Number(s.stationId||s.StationNumber||s.stationNumber||0);
-        return STATION_ABBR[id]||'???';
-      }).join(' > ');
-    }
+  // Wind: –3 to +3 pts
+  const wq = windQuality(windDir, windSpeed);
+  const wPts = wq.bonus;
 
-    // Major hubs for departure board queries
-    const HUBS=[3700,680,2300,8600,7320,1600,5900];
+  const raw = hPts + pPts + wPts + (bonus || 0);
+  return Math.round(Math.min(10, Math.max(0, raw)));
+}
 
-    function setTrainStatus(t,txt){document.getElementById('trainStatus').innerHTML=`<span class="status-dot ${t}"></span> ${txt}`}
+function calcSupScore(waveH, windSpeed, windDir) {
+  let score = 10;
+  const kmh = windSpeed;
+  // Wind penalty (SUP very sensitive to wind)
+  if (kmh > 37)      score -= 6;
+  else if (kmh > 28) score -= 4;
+  else if (kmh > 19) score -= 2;
+  else if (kmh > 10) score -= 1;
 
-    function initTrainDropdown(){
-      const sel=document.getElementById('trainStation');
-      const saved=localStorage.getItem('train_station');
-      STATIONS.forEach(s=>{
-        const opt=document.createElement('option');opt.value=s.id;opt.textContent=s.he+' / '+s.en;sel.appendChild(opt);
-      });
-      if(saved){sel.value=saved;onTrainStationChange()}
-    }
+  // Offshore wind danger (can blow you out) — extra penalty
+  let diff = Math.abs(windDir - 90);
+  if (diff > 180) diff = 360 - diff;
+  if (diff < 70 && kmh > 20) score -= 2;
 
-    function onTrainStationChange(){
-      const id=document.getElementById('trainStation').value;
-      if(!id)return;
-      localStorage.setItem('train_station',id);
-      loadTrains();
-      if(trainInterval)clearInterval(trainInterval);
-      trainInterval=setInterval(loadTrains,60000);
-    }
+  // Wave penalty
+  if      (waveH > 1.5) score -= 4;
+  else if (waveH > 1.0) score -= 2;
+  else if (waveH > 0.7) score -= 1;
 
-    async function loadTrains(){
-      const stationId=document.getElementById('trainStation').value;
-      if(!stationId)return;
-      setTrainStatus('loading','FETCHING...');
+  return Math.round(Math.min(10, Math.max(0, score)));
+}
 
-      const now=new Date();
-      const date=now.toISOString().split('T')[0];
-      const hour=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+function calcKayakScore(waveH, windSpeed) {
+  let score = 10;
+  const kmh = windSpeed;
+  if (kmh > 46)      score -= 6;
+  else if (kmh > 37) score -= 4;
+  else if (kmh > 28) score -= 2;
+  else if (kmh > 19) score -= 1;
 
-      // Query multiple destinations in parallel to build departure board
-      const destinations=HUBS.filter(h=>String(h)!==stationId);
-      const results=[];
+  if      (waveH > 2.0) score -= 4;
+  else if (waveH > 1.5) score -= 2;
+  else if (waveH > 1.0) score -= 1;
 
-      try{
-        const promises=destinations.map(dest=>{
-          const url=`${TRAIN_API}?fromStation=${stationId}&toStation=${dest}&date=${date}&hour=${hour}&scheduleType=1&systemType=2&languageId=Hebrew`;
-          return apiFetch(url).then(data=>({dest,data,ok:true})).catch(e=>({dest,ok:false,err:e.message}));
+  return Math.round(Math.min(10, Math.max(0, score)));
+}
+
+// ── Direction label ────────────────────────────────────────────────
+function dirLabel(deg) {
+  const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return dirs[Math.round(deg / 22.5) % 16];
+}
+
+// ── Load all beach data ────────────────────────────────────────────
+async function loadAll() {
+  const btn = document.getElementById('refresh-btn');
+  btn.disabled = true;
+  document.getElementById('status-msg').style.display = 'block';
+  document.getElementById('status-msg').textContent = 'Fetching ocean data…';
+  document.getElementById('cards-grid').style.display = 'none';
+  document.getElementById('best-banner').style.display = 'none';
+
+  try {
+    // Fetch marine data per beach + one shared weather fetch (wind is uniform over ~10km)
+    const marinePromises = BEACHES.map(b => fetchJSON(marineUrl(b.lat, b.lon)));
+    const weatherPromise = fetchJSON(weatherUrl(32.334, 34.849)); // Netanya center
+
+    const marineResults = await Promise.all(marinePromises);
+    const weatherResult = await weatherPromise;
+
+    // Parse wind from current block
+    const wCur = weatherResult.current;
+    const windSpeed = wCur.wind_speed_10m;
+    const windDir   = wCur.wind_direction_10m;
+    const windGust  = wCur.wind_gusts_10m;
+    const airTemp   = wCur.temperature_2m;
+
+    // Parse hourly wind for forecast
+    const wHourly = weatherResult.hourly;
+
+    // Process each beach
+    BEACHES.forEach((beach, i) => {
+      const m = marineResults[i];
+      const h = m.hourly;
+      const idx = currentHourIndex(h.time);
+
+      const waveH      = h.wave_height[idx]         ?? 0;
+      const waveDir    = h.wave_direction[idx]       ?? 0;
+      const wavePeriod = h.wave_period[idx]          ?? 0;
+      const swellH     = h.swell_wave_height[idx]    ?? 0;
+      const swellDir   = h.swell_wave_direction[idx] ?? 0;
+      const swellPer   = h.swell_wave_period[idx]    ?? 0;
+      const swellPeak  = h.swell_wave_peak_period[idx] ?? swellPer;
+      const windWaveH  = h.wind_wave_height[idx]     ?? 0;
+      const windWavePer= h.wind_wave_period[idx]     ?? 0;
+
+      const surf  = calcSurfScore(waveH, swellPer || wavePeriod, windSpeed, windDir, beach.surfBonus);
+      const sup   = calcSupScore(waveH, windSpeed, windDir);
+      const kayak = calcKayakScore(waveH, windSpeed);
+
+      // Build 12-hour forecast (current hour + next 11)
+      const forecast = [];
+      for (let f = 0; f < 12; f++) {
+        const fi = idx + f;
+        if (fi >= h.time.length) break;
+        const wi = wHourly.time.findIndex(t => t === h.time[fi]);
+        const fWind  = wi >= 0 ? wHourly.wind_speed_10m[wi]    : windSpeed;
+        const fWindD = wi >= 0 ? wHourly.wind_direction_10m[wi]: windDir;
+        const fWaveH = h.wave_height[fi] ?? waveH;
+        const fSwellP= h.swell_wave_period[fi] ?? swellPer;
+        forecast.push({
+          time: h.time[fi],
+          waveH: fWaveH,
+          swellPeriod: fSwellP,
+          windSpeed: fWind,
+          windDir: fWindD,
+          surf:  calcSurfScore(fWaveH, fSwellP || wavePeriod, fWind, fWindD, beach.surfBonus),
+          sup:   calcSupScore(fWaveH, fWind, fWindD),
+          kayak: calcKayakScore(fWaveH, fWind),
         });
-
-        const responses=await Promise.all(promises);
-        const seen=new Set();
-
-        for(const res of responses){
-          if(!res.ok||!res.data?.result?.travels)continue;
-          for(const travel of res.data.result.travels){
-            if(!travel.trains?.length)continue;
-            const train=travel.trains[0]; // first leg
-            const key=train.trainNumber+'_'+train.departureTime;
-            if(seen.has(key))continue;seen.add(key);
-
-            const depTime=new Date(train.departureTime);
-            const diffMin=Math.max(0,Math.round((depTime-now)/60000));
-            const destStation=STATIONS.find(s=>s.id===Number(travel.trains[travel.trains.length-1].destStationId||travel.trains[travel.trains.length-1].destinationStationId));
-
-            results.push({
-              trainNo:train.trainNumber||train.trainno||'?',
-              dest:destStation?destStation.he:(train.destinationStationName||'?'),
-              depTime,
-              diffMin,
-              platform:train.platform||train.departurePlatform||'?',
-              direct:travel.trains.length===1,
-              stops:train.stopStations?.length||0,
-              stopStations:train.stopStations||[],
-            });
-          }
-        }
-
-        results.sort((a,b)=>a.depTime-b.depTime);
-        renderTrains(results.slice(0,12));
-
-        if(results.length)setTrainStatus('live','LIVE // '+now.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
-        else setTrainStatus('error','NO_TRAINS_FOUND');
-      }catch(e){
-        setTrainStatus('error','ERR: '+e.message);
       }
-    }
 
-    function renderTrains(trains){
-      const el=document.getElementById('trainArrivals');
-      if(!trains.length){
-        el.innerHTML='<div class="empty-state"><div class="icon">&gt;_</div><div>NO_DEPARTURES_FOUND</div></div>';return;
-      }
-      el.innerHTML=trains.map(t=>{
-        const timeStr=t.depTime.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
-        let cls='train',txt=String(t.diffMin),lbl='min';
-        if(t.diffMin<=1){cls='now';txt='NOW';lbl=''}
-        else if(t.diffMin<=5){cls='soon'}
-        const abbr=stopsToAbbr(t.stopStations);
-        return`<div class="arrival-card train-card">
-          <div class="arrival-left">
-            <div class="train-num">#${esc(String(t.trainNo))}</div>
-            <div>
-              <div class="train-dest">${esc(t.dest)}</div>
-              <div class="stops-info">${t.direct?'[DIRECT]':'[CHANGE]'}</div>
-              <div class="platform-tag">PLATFORM ${esc(String(t.platform))}</div>
-              ${abbr?`<div class="stops-abbr">[${abbr}]</div>`:''}
-            </div>
-          </div>
-          <div class="arrival-right">
-            <div class="arrival-min ${cls}">${txt}</div>
-            <div class="arrival-label">${lbl}</div>
-            <div class="arrival-time">${timeStr}</div>
-          </div></div>`;
-      }).join('');
-    }
-
-    // ============================================================
-    //  INIT
-    // ============================================================
-    document.addEventListener('DOMContentLoaded',()=>{
-      document.getElementById('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter')searchStops()});
-      initTrainDropdown();
-
-      const urlTab=params.get('tab');
-      if(urlTab==='train')switchTab('train');
-
-      const urlStop=params.get('stop');
-      if(urlStop){pickStop(urlStop,params.get('name')||'stop#'+urlStop,null)}
-      else{const s=loadSaved();if(s){selectedStopId=s.id;showSaved(s.name);loadArrivals();refreshInterval=setInterval(loadArrivals,30000)}else{searchStops()}}
+      beachData[beach.id] = {
+        waveH, waveDir, wavePeriod,
+        swellH, swellDir, swellPer, swellPeak,
+        windWaveH, windWavePer,
+        windSpeed, windDir, windGust, airTemp,
+        surf, sup, kayak,
+        forecast,
+        wq: windQuality(windDir, windSpeed),
+      };
     });
-  </script>
+
+    lastLoaded = new Date();
+    renderCards();
+    renderBestBanner();
+  } catch (err) {
+    document.getElementById('status-msg').textContent = '⚠️ Failed to load data. ' + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── Activity tab ───────────────────────────────────────────────────
+function setTab(tab, el) {
+  activeTab = tab;
+  document.querySelectorAll('.activity-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderCards();
+  renderBestBanner();
+}
+
+function tabScore(data, tab) {
+  if (tab === 'surf')  return data.surf;
+  if (tab === 'sup')   return data.sup;
+  if (tab === 'kayak') return data.kayak;
+  return Math.round((data.surf + data.sup + data.kayak) / 3);
+}
+
+// ── Render cards ───────────────────────────────────────────────────
+function renderCards() {
+  const grid = document.getElementById('cards-grid');
+  document.getElementById('status-msg').style.display = 'none';
+  grid.style.display = 'grid';
+
+  // Sort by active tab score desc
+  const sorted = [...BEACHES].sort((a, b) =>
+    tabScore(beachData[b.id], activeTab) - tabScore(beachData[a.id], activeTab)
+  );
+  const bestId = sorted[0].id;
+
+  grid.innerHTML = sorted.map(beach => {
+    const d = beachData[beach.id];
+    const isBest = beach.id === bestId;
+    const sc = scoreColor;
+
+    const surfC  = sc(d.surf);
+    const supC   = sc(d.sup);
+    const kayakC = sc(d.kayak);
+    const mainScore = tabScore(d, activeTab);
+
+    return `
+    <div class="beach-card ${isBest ? 'best-card' : ''}" id="card-${beach.id}">
+      <div class="card-header">
+        <div>
+          <div class="beach-name">${beach.name} <span class="best-badge">★ Best</span></div>
+          <div class="beach-desc">${beach.desc}</div>
+        </div>
+      </div>
+      <div class="scores-row">
+        <div class="score-item">
+          <div class="score-ring s-${surfC}">
+            <span class="score-num">${d.surf}</span>
+            <span class="score-max">/10</span>
+          </div>
+          <span class="score-label">🏄 Surf</span>
+        </div>
+        <div class="score-item">
+          <div class="score-ring s-${supC}">
+            <span class="score-num">${d.sup}</span>
+            <span class="score-max">/10</span>
+          </div>
+          <span class="score-label">🏄‍♂️ SUP</span>
+        </div>
+        <div class="score-item">
+          <div class="score-ring s-${kayakC}">
+            <span class="score-num">${d.kayak}</span>
+            <span class="score-max">/10</span>
+          </div>
+          <span class="score-label">🚣 Kayak</span>
+        </div>
+      </div>
+      <div class="quick-stats">
+        <div class="quick-stat">
+          <span class="qs-val">${d.waveH.toFixed(1)}m</span>
+          <span class="qs-key">Waves</span>
+        </div>
+        <div class="quick-stat">
+          <span class="qs-val">${Math.round(d.swellPer || d.wavePeriod)}s</span>
+          <span class="qs-key">Period</span>
+        </div>
+        <div class="quick-stat">
+          <span class="qs-val">${Math.round(d.windSpeed)} km/h</span>
+          <span class="qs-key">Wind</span>
+        </div>
+        <div class="quick-stat">
+          <span class="qs-val">${dirLabel(d.windDir)}</span>
+          <span class="qs-key">Direction</span>
+        </div>
+      </div>
+      <button class="details-btn" onclick="openModal('${beach.id}')">Details &amp; Forecast ▾</button>
+    </div>`;
+  }).join('');
+
+  // Update timestamp
+  if (lastLoaded) {
+    const mins = Math.round((Date.now() - lastLoaded) / 60000);
+    document.getElementById('last-updated').textContent =
+      mins < 1 ? 'Just updated' : `Updated ${mins}m ago`;
+  }
+}
+
+// ── Best beach banner ──────────────────────────────────────────────
+function renderBestBanner() {
+  const sorted = [...BEACHES].sort((a, b) =>
+    tabScore(beachData[b.id], activeTab) - tabScore(beachData[a.id], activeTab)
+  );
+  const best = sorted[0];
+  const d = beachData[best.id];
+  const score = tabScore(d, activeTab);
+  const [label] = condLabel(score);
+
+  document.getElementById('best-beach-name').textContent = best.name;
+  document.getElementById('best-beach-sub').textContent =
+    `${label} · ${d.waveH.toFixed(1)}m waves · ${dirLabel(d.windDir)} wind`;
+  document.getElementById('best-banner').style.display = 'block';
+}
+
+// ── Modal ──────────────────────────────────────────────────────────
+function openModal(beachId) {
+  const beach = BEACHES.find(b => b.id === beachId);
+  const d = beachData[beachId];
+  const wq = d.wq;
+
+  document.getElementById('modal-beach-name').textContent = beach.name;
+
+  const [surfLabel, surfCls]   = condLabel(d.surf);
+  const [supLabel, supCls]     = condLabel(d.sup);
+  const [kayakLabel, kayakCls] = condLabel(d.kayak);
+
+  const forecastRows = d.forecast.map((f, i) => {
+    const t = new Date(f.time);
+    const timeStr = i === 0 ? 'Now' :
+      t.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const sc = scoreColor(tabScore(f, activeTab));
+    const pillColors = {
+      great: '#edfaf1;color:#2dc653',
+      good:  '#f3fbed;color:#5aab2a',
+      fair:  '#fefae0;color:#c49a00',
+      poor:  '#fff3e6;color:#f4811f',
+      bad:   '#fdf0f1;color:#e63946',
+    };
+    const pill = pillColors[sc];
+    return `<tr>
+      <td>${timeStr}</td>
+      <td>${f.waveH.toFixed(1)}m</td>
+      <td>${Math.round(f.swellPeriod)}s</td>
+      <td>${Math.round(f.windSpeed)} <small>${dirLabel(f.windDir)}</small></td>
+      <td><span class="score-pill" style="background:${pill.split(';')[0]};${pill.split(';')[1]}">${tabScore(f, activeTab)}</span></td>
+    </tr>`;
+  }).join('');
+
+  const actLabel = activeTab === 'surf' ? 'Surf' : activeTab === 'sup' ? 'SUP' : activeTab === 'kayak' ? 'Kayak' : 'Overall';
+
+  document.getElementById('modal-body').innerHTML = `
+    <div class="modal-section">
+      <h3>Activity Scores</h3>
+      <div class="modal-scores">
+        <div class="modal-score-item">
+          <span class="act-icon">🏄</span>
+          <span class="act-score" style="color:var(--${scoreColor(d.surf)==='great'?'green':scoreColor(d.surf)==='good'?'green':scoreColor(d.surf)==='fair'?'yellow':scoreColor(d.surf)==='poor'?'orange':'red'})">${d.surf}</span>
+          <span class="act-label">Surf</span>
+          <span class="cond-label cond-${scoreColor(d.surf)}">${surfLabel}</span>
+        </div>
+        <div class="modal-score-item">
+          <span class="act-icon">🏄‍♂️</span>
+          <span class="act-score">${d.sup}</span>
+          <span class="act-label">SUP</span>
+          <span class="cond-label cond-${scoreColor(d.sup)}">${supLabel}</span>
+        </div>
+        <div class="modal-score-item">
+          <span class="act-icon">🚣</span>
+          <span class="act-score">${d.kayak}</span>
+          <span class="act-label">Kayak</span>
+          <span class="cond-label cond-${scoreColor(d.kayak)}">${kayakLabel}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <h3>Current Conditions</h3>
+      <div class="detail-grid">
+        <div class="detail-cell">
+          <div class="dc-val">${d.waveH.toFixed(2)} m</div>
+          <div class="dc-key">Wave Height</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-val">${d.swellH.toFixed(2)} m</div>
+          <div class="dc-key">Swell Height</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-val">${Math.round(d.swellPer || d.wavePeriod)} s</div>
+          <div class="dc-key">Swell Period</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-val">${Math.round(d.swellPeak)} s</div>
+          <div class="dc-key">Peak Period</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-val">${dirLabel(d.swellDir)} (${Math.round(d.swellDir)}°)</div>
+          <div class="dc-key">Swell Direction</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-val">${d.windWaveH.toFixed(2)} m</div>
+          <div class="dc-key">Wind Wave Height</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-val">${Math.round(d.windSpeed)} km/h</div>
+          <div class="dc-key">Wind Speed</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-val">${Math.round(d.windGust)} km/h</div>
+          <div class="dc-key">Wind Gusts</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-val">${dirLabel(d.windDir)} (${Math.round(d.windDir)}°)</div>
+          <div class="dc-key">Wind Direction</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-val">${wq.icon} ${wq.label}</div>
+          <div class="dc-key">Wind Quality</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-val">${d.waveDir !== undefined ? dirLabel(d.waveDir) : '—'}</div>
+          <div class="dc-key">Wave Direction</div>
+        </div>
+        <div class="detail-cell">
+          <div class="dc-val">${Math.round(d.airTemp)}°C</div>
+          <div class="dc-key">Air Temp</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-section" style="padding-bottom:16px">
+      <h3>12-Hour Forecast · ${actLabel}</h3>
+      <table class="forecast-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Waves</th>
+            <th>Period</th>
+            <th>Wind</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody>${forecastRows}</tbody>
+      </table>
+    </div>
+  `;
+
+  document.getElementById('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ── Auto-refresh timestamp every minute ───────────────────────────
+setInterval(() => {
+  if (lastLoaded && Object.keys(beachData).length) {
+    const mins = Math.round((Date.now() - lastLoaded) / 60000);
+    document.getElementById('last-updated').textContent =
+      mins < 1 ? 'Just updated' : `Updated ${mins}m ago`;
+  }
+}, 60000);
+
+// ── Boot ───────────────────────────────────────────────────────────
+loadAll();
+</script>
 </body>
 </html>
