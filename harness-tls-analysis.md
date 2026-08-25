@@ -122,6 +122,19 @@ Notable details:
 `Security.framework` is OS-level trust/keychain integration only, not the
 TLS implementation.
 
+**Platform note — Windows build differs in crypto backend.** The user also
+ran `llvm-strings` against the Windows build
+(`%LocalAppData%\Programs\Warp\warp.exe`) and found the same `rustls` core
+(handshake/record-layer/ECH/GREASE strings, `rustls_platform_verifier`) but
+a **different crypto provider: `ring`**, not aws-lc-rs — identified via
+ring's ported-from-OpenSSL assembly routines (`CRYPTOGAMS`, Montgomery
+multiplication for x86_64). Certificate root-of-trust is delegated to
+Windows CryptoAPI (`crypt32.dll`) through `rustls_platform_verifier`;
+`secur32.dll`/`bcrypt.dll` are OS crypto primitives that verifier/ring call
+into, not a separate TLS stack — no OpenSSL or Schannel TLS is linked. So
+Warp appears to select its rustls crypto provider per platform: **aws-lc-rs
+on macOS, ring on Windows**, both still rustls at the protocol layer.
+
 ## Unchanged — could not obtain the artifact in this sandbox
 
 - **Cursor / Windsurf** — closed-source Electron desktop apps; their
