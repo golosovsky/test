@@ -87,21 +87,55 @@ OpenSSL, not BoringSSL.
 **TLS: OpenSSL**, via Node.js (both the extension-host path and the `pkg`-
 compiled binary component).
 
+### 12. Warp — ✅ confirmed (analyzed locally, outside the sandbox)
+This session's egress proxy couldn't reach `app.warp.dev`, so the user
+downloaded the macOS build themselves and ran the same
+binary-strings method locally against
+`/Volumes/Warp/Warp.app/Contents/MacOS/stable`.
+
+`otool`/`ldd`-equivalent shows **no dynamic TLS library** linked — the only
+crypto-adjacent dynamic dependency is Apple's `Security.framework`, used for
+the OS trust store/keychain, not the TLS protocol itself. The actual TLS
+stack is statically compiled in, and embedded Cargo registry paths plus
+error strings identify it precisely:
+
+| Component | Version | Role |
+|---|---|---|
+| rustls | 0.23.39 | TLS 1.2/1.3 protocol engine |
+| rustls-webpki | 0.103.13 | X.509 certificate path validation |
+| aws-lc-rs | (via `crypto/aws_lc_rs`) | Cryptographic provider (default rustls backend) |
+| hyper-rustls | 0.27.7 | rustls ↔ hyper HTTP client glue |
+| tokio-rustls / async-tungstenite | 0.28.2 | async TLS + WebSocket transport |
+
+Notable details:
+- Crypto backend is **aws-lc-rs**, not `ring` — strings like `EVP_DigestFinal
+  failed` / `digest update failed` are aws-lc-rs's BoringSSL-derived FIPS-
+  oriented C core; the `ring` paths present are just rustls's internal module
+  layout, not the active provider.
+- No OpenSSL, BoringSSL-standalone, GnuTLS, NSS, or native-tls anywhere.
+- Modern feature set compiled in: TLS 1.3, Encrypted Client Hello (ECH),
+  GREASE, CRL checking, and post-quantum signature schemes (ML-DSA-44/65/87).
+- Also links the AWS SDK's rustls provider (`aws-smithy-http-client`),
+  consistent with Warp's cloud/AI backend calls.
+
+**TLS: rustls 0.23 with the aws-lc-rs crypto provider**, statically linked;
+`Security.framework` is OS-level trust/keychain integration only, not the
+TLS implementation.
+
 ## Unchanged — could not obtain the artifact in this sandbox
 
 - **Cursor / Windsurf** — closed-source Electron desktop apps; their
   download CDNs (`downloads.cursor.com`, `windsurf-stable.codeiumdata.com`)
   are not on this session's egress allow-list (`403` at the proxy). Original
   ⚙️ inferred rows stand.
-- **Warp** — closed-source; `app.warp.dev` likewise blocked. Row stands as ⚙️.
 - **Replit Agent** — server-side only; there is no client binary to fetch.
 - **Devin** — cloud VM only; "Devin Local" is not publicly downloadable.
 
 If a wider egress allow-list (or a machine with unrestricted internet) is
 available, the same method — `file`/`ldd`/`strings` for the ELF/PE/Mach-O,
 grepping for `OpenSSL <version>`, `BoringSSL`, `rustls`, symbol names like
-`rustls_*`/`aws_lc_*`/`SSL_library_init` — would settle those three the same
-way it settled Copilot CLI.
+`rustls_*`/`aws_lc_*`/`SSL_library_init` — would settle Cursor and Windsurf
+the same way it settled Copilot CLI and Warp.
 
 ## Updated table (deltas only)
 
@@ -112,8 +146,8 @@ way it settled Copilot CLI.
 | 8 | Cline | OpenSSL (Node.js Extension Host, via axios) | ✅ confirmed (source) |
 | 9 | Amazon Q Developer CLI | rustls 0.23 + aws-lc-rs | ✅ confirmed (Cargo.lock) |
 | 11 | Continue.dev | OpenSSL (Node.js, extension host + `pkg` binary) | ✅ confirmed (source) |
+| 12 | Warp | rustls 0.23 + aws-lc-rs | ✅ confirmed (binary strings, analyzed locally) |
 | 5 | Cursor | BoringSSL (Chromium)/OpenSSL (Node) | ⚙️ unchanged — binary unreachable |
 | 6 | Windsurf | BoringSSL (Chromium)/OpenSSL (Node) | ⚙️ unchanged — binary unreachable |
-| 12 | Warp | rustls or native-tls | ⚙️ unchanged — binary unreachable |
 | 14 | Replit Agent | OpenSSL (Python default) | ⚙️ unchanged — no client binary exists |
 | 15 | Devin | not documented | ⚠️ unchanged — no local binary exists |
