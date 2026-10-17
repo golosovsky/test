@@ -33,3 +33,24 @@ Uses the [busnearby.co.il](https://app.busnearby.co.il) API for real-time Israel
 4. Watch arrival times update in real-time
 
 The stop code is printed on the physical bus stop sign. You can also search by name.
+
+---
+
+# Netanya Surf Check
+
+A small Python script that tells you whether today is a good day to surf in Netanya,
+tuned for a beginner on a 9' longboard.
+
+```bash
+python3 surf/netanya_surf.py
+```
+
+It prints a quick verdict in the terminal and opens http://localhost:8000 with:
+
+- a big **GO SURF! / Maybe / Skip it** verdict and the best time to go
+- wave height, period, wind and water temperature
+- an hour-by-hour score for the rest of today and a look at the next 3 days
+
+Data comes from the free [Open-Meteo](https://open-meteo.com) marine and weather APIs (no API key).
+Scoring favours 0.4–1.0 m waves, 6+ s period, and light or easterly (offshore) wind.
+Needs only Python 3 – no extra packages.
